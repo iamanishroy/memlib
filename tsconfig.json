@@ -1,0 +1,3 @@
+{
+  "extends": "@memz/config/tsconfig.base.json"
+}
