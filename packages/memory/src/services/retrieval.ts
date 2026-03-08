@@ -1,5 +1,4 @@
-import { pool } from "../db/index";
-import { generateEmbedding } from "./embedding";
+import type { MemoryDeps } from "../config";
 
 export interface RetrievedMemory {
   id: string;
@@ -23,23 +22,19 @@ export interface RecallOptions {
 /**
  * Retrieve memories using hybrid scoring:
  *   score = 0.6 * similarity + 0.2 * recency + 0.2 * importance
- *
- * Supports optional tag and importance filters.
- * Also updates `last_accessed` on all returned memories.
  */
 export async function retrieveMemories(
+  deps: Pick<MemoryDeps, "pool" | "generateEmbedding">,
   namespace: string,
   query: string,
   options: RecallOptions | number = {},
 ): Promise<RetrievedMemory[]> {
-  // Backwards compat: accept a plain number as limit
   const opts: RecallOptions =
     typeof options === "number" ? { limit: options } : options;
   const { tags, minImportance, limit = 10 } = opts;
 
-  const embedding = await generateEmbedding(query);
+  const embedding = await deps.generateEmbedding(query);
 
-  // Build dynamic WHERE clauses
   const conditions = [
     "namespace = $2",
     "archived = false",
@@ -74,18 +69,16 @@ export async function retrieveMemories(
     LIMIT $${params.length}
   `;
 
-  const result = await pool.query(sql, params);
+  const result = await deps.pool.query(sql, params);
 
   if (result.rows.length === 0) return [];
 
-  // Update last_accessed for all retrieved memories
   const ids = result.rows.map((r: any) => r.id);
-  await pool.query(
+  await deps.pool.query(
     `UPDATE memories SET last_accessed = NOW() WHERE id = ANY($1::uuid[])`,
     [ids],
   );
 
-  // Apply hybrid scoring
   return result.rows
     .map((row: any) => {
       const similarity = parseFloat(row.similarity);

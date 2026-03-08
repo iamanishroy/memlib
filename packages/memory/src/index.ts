@@ -1,26 +1,16 @@
-export { db, pool } from "./db/index";
+// Core factory
+export { createMemoryService, type MemoryService } from "./client";
+
+// Config types
+export type { MemoryConfig, MemoryDeps } from "./config";
+
+// Schema & DB types
 export { memories, type Memory, type NewMemory } from "./db/schema";
 
-export {
-  storeMemory,
-  storeMemories,
-  getMemories,
-  deleteMemory,
-  type StoreMemoryOptions,
-} from "./services/memory";
-
-export {
-  retrieveMemories,
-  type RetrievedMemory,
-  type RecallOptions,
-} from "./services/retrieval";
-
-export {
-  consolidateMemories,
-  type StaleMemoryGroup,
-  type ConsolidationResult,
+// Service types (for advanced usage)
+export type { StoreMemoryOptions } from "./services/memory";
+export type { RetrievedMemory, RecallOptions } from "./services/retrieval";
+export type {
+  StaleMemoryGroup,
+  ConsolidationResult,
 } from "./services/consolidation";
-
-export { generateEmbedding } from "./services/embedding";
-export { generateText } from "./services/gemini";
-export { scoreImportance } from "./services/importance";

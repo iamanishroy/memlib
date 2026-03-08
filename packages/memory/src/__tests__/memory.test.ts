@@ -1,38 +1,34 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-
-// Mock the db module
-vi.mock("../db/index", () => ({
-  db: {
-    insert: vi.fn(),
-    delete: vi.fn(),
-    query: {
-      memories: {
-        findMany: vi.fn(),
-      },
-    },
-  },
-  pool: {
-    query: vi.fn(),
-  },
-}));
-
-// Mock the embedding service
-vi.mock("../services/embedding", () => ({
-  generateEmbedding: vi.fn().mockResolvedValue(new Array(1536).fill(0.1)),
-}));
-
-// Mock the importance service
-vi.mock("../services/importance", () => ({
-  scoreImportance: vi.fn().mockResolvedValue(0.7),
-}));
-
-import { db, pool } from "../db/index";
+import type { MemoryDeps } from "../config";
 import {
   storeMemory,
   storeMemories,
   getMemories,
   deleteMemory,
 } from "../services/memory";
+
+const mockDb = {
+  insert: vi.fn(),
+  delete: vi.fn(),
+  query: {
+    memories: {
+      findMany: vi.fn(),
+    },
+  },
+};
+
+const mockPool = { query: vi.fn() };
+const mockGenerateEmbedding = vi
+  .fn()
+  .mockResolvedValue(new Array(1536).fill(0.1));
+const mockGenerateText = vi.fn().mockResolvedValue("0.7");
+
+const deps = {
+  db: mockDb,
+  pool: mockPool,
+  generateEmbedding: mockGenerateEmbedding,
+  generateText: mockGenerateText,
+} as unknown as MemoryDeps;
 
 describe("Memory Service", () => {
   beforeEach(() => {
@@ -56,7 +52,7 @@ describe("Memory Service", () => {
         metadata: {},
       };
 
-      vi.mocked(pool.query).mockResolvedValue({ rows: [] } as any);
+      mockPool.query.mockResolvedValue({ rows: [] });
 
       const mockInsert = {
         values: vi.fn().mockReturnValue({
@@ -64,13 +60,13 @@ describe("Memory Service", () => {
         }),
       };
 
-      vi.mocked(db.insert).mockReturnValue(mockInsert as any);
+      mockDb.insert.mockReturnValue(mockInsert);
 
-      const result = await storeMemory("user:alice", "I like TypeScript");
+      const result = await storeMemory(deps, "user:alice", "I like TypeScript");
 
       expect(result).toEqual(mockMemory);
       expect(result.importance).toBe(0.7);
-      expect(db.insert).toHaveBeenCalled();
+      expect(mockDb.insert).toHaveBeenCalled();
     });
 
     it("should return existing memory if duplicate detected", async () => {
@@ -87,14 +83,12 @@ describe("Memory Service", () => {
         similarity: 0.98,
       };
 
-      vi.mocked(pool.query).mockResolvedValue({
-        rows: [existingMemory],
-      } as any);
+      mockPool.query.mockResolvedValue({ rows: [existingMemory] });
 
-      const result = await storeMemory("user:alice", "I like TypeScript");
+      const result = await storeMemory(deps, "user:alice", "I like TypeScript");
 
       expect((result as any).deduplicated).toBe(true);
-      expect(db.insert).not.toHaveBeenCalled();
+      expect(mockDb.insert).not.toHaveBeenCalled();
     });
 
     it("should store a memory with tags and TTL", async () => {
@@ -113,7 +107,7 @@ describe("Memory Service", () => {
         metadata: { source: "conversation" },
       };
 
-      vi.mocked(pool.query).mockResolvedValue({ rows: [] } as any);
+      mockPool.query.mockResolvedValue({ rows: [] });
 
       const mockInsert = {
         values: vi.fn().mockReturnValue({
@@ -121,13 +115,18 @@ describe("Memory Service", () => {
         }),
       };
 
-      vi.mocked(db.insert).mockReturnValue(mockInsert as any);
+      mockDb.insert.mockReturnValue(mockInsert);
 
-      const result = await storeMemory("user:alice", "I prefer dark mode", {
-        tags: ["preference", "ui"],
-        metadata: { source: "conversation" },
-        ttl: 86400,
-      });
+      const result = await storeMemory(
+        deps,
+        "user:alice",
+        "I prefer dark mode",
+        {
+          tags: ["preference", "ui"],
+          metadata: { source: "conversation" },
+          ttl: 86400,
+        },
+      );
 
       expect(result.tags).toEqual(["preference", "ui"]);
       expect(result.metadata).toEqual({ source: "conversation" });
@@ -161,15 +160,15 @@ describe("Memory Service", () => {
         }),
       };
 
-      vi.mocked(db.insert).mockReturnValue(mockInsert as any);
+      mockDb.insert.mockReturnValue(mockInsert);
 
-      const result = await storeMemories("user:alice", [
+      const result = await storeMemories(deps, "user:alice", [
         { content: "Memory 1", tags: ["a"] },
         { content: "Memory 2", tags: ["b"] },
       ]);
 
       expect(result).toHaveLength(2);
-      expect(db.insert).toHaveBeenCalledTimes(1); // single batch insert
+      expect(mockDb.insert).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -190,36 +189,22 @@ describe("Memory Service", () => {
           lastAccessed: new Date(),
           metadata: null,
         },
-        {
-          id: "2",
-          namespace: "user:alice",
-          content: "Memory 2",
-          embedding: null,
-          importance: 0.8,
-          tags: ["dev"],
-          memoryType: null,
-          archived: false,
-          expiresAt: null,
-          createdAt: new Date(),
-          lastAccessed: new Date(),
-          metadata: null,
-        },
       ];
 
-      vi.mocked(db.query.memories.findMany).mockResolvedValue(mockMemories);
+      mockDb.query.memories.findMany.mockResolvedValue(mockMemories);
 
-      const result = await getMemories("user:alice");
+      const result = await getMemories(deps, "user:alice");
 
       expect(result).toEqual(mockMemories);
-      expect(result).toHaveLength(2);
+      expect(result).toHaveLength(1);
     });
 
     it("should respect the limit parameter", async () => {
-      vi.mocked(db.query.memories.findMany).mockResolvedValue([]);
+      mockDb.query.memories.findMany.mockResolvedValue([]);
 
-      await getMemories("user:alice", 10);
+      await getMemories(deps, "user:alice", 10);
 
-      expect(db.query.memories.findMany).toHaveBeenCalledWith(
+      expect(mockDb.query.memories.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ limit: 10 }),
       );
     });
@@ -228,11 +213,11 @@ describe("Memory Service", () => {
   describe("deleteMemory", () => {
     it("should delete a memory by id", async () => {
       const mockWhere = vi.fn().mockResolvedValue(undefined);
-      vi.mocked(db.delete).mockReturnValue({ where: mockWhere } as any);
+      mockDb.delete.mockReturnValue({ where: mockWhere });
 
-      await deleteMemory("test-uuid");
+      await deleteMemory(deps, "test-uuid");
 
-      expect(db.delete).toHaveBeenCalled();
+      expect(mockDb.delete).toHaveBeenCalled();
       expect(mockWhere).toHaveBeenCalled();
     });
   });

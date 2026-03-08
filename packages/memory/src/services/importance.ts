@@ -1,4 +1,4 @@
-import { generateText } from "./gemini";
+import type { MemoryDeps } from "../config";
 
 const IMPORTANCE_PROMPT = `You are a memory importance scorer for an AI assistant.
 
@@ -16,12 +16,15 @@ Reply with ONLY a number between 0.0 and 1.0, nothing else.
 Memory: `;
 
 /**
- * Uses Gemini to score a memory's importance from 0.0 to 1.0.
+ * Uses LLM to score a memory's importance from 0.0 to 1.0.
  * Falls back to 0.5 if scoring fails (non-critical path).
  */
-export async function scoreImportance(content: string): Promise<number> {
+export async function scoreImportance(
+  deps: Pick<MemoryDeps, "generateText">,
+  content: string,
+): Promise<number> {
   try {
-    const response = await generateText(IMPORTANCE_PROMPT + content);
+    const response = await deps.generateText(IMPORTANCE_PROMPT + content);
     const score = parseFloat(response);
 
     if (isNaN(score) || score < 0 || score > 1) {
@@ -31,7 +34,7 @@ export async function scoreImportance(content: string): Promise<number> {
       return 0.5;
     }
 
-    return Math.round(score * 100) / 100; // 2 decimal places
+    return Math.round(score * 100) / 100;
   } catch (error) {
     console.warn("Importance scoring failed, defaulting to 0.5:", error);
     return 0.5;

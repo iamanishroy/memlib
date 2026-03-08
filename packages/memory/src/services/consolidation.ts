@@ -1,6 +1,4 @@
-import { pool } from "../db/index";
-import { generateText } from "./gemini";
-import { generateEmbedding } from "./embedding";
+import type { MemoryDeps } from "../config";
 
 export interface StaleMemoryGroup {
   namespace: string;
@@ -28,14 +26,15 @@ Memories:
 
 /**
  * Finds non-archived memories older than `ageDays`, summarizes each
- * namespace's group via Gemini, stores a condensed memory, and
+ * namespace's group via LLM, stores a condensed memory, and
  * archives the originals.
  */
 export async function consolidateMemories(
+  deps: Pick<MemoryDeps, "pool" | "generateEmbedding" | "generateText">,
   ageDays = 7,
   limit = 50,
 ): Promise<ConsolidationResult[]> {
-  const result = await pool.query(
+  const result = await deps.pool.query(
     `
     SELECT id, namespace, content, created_at, importance
     FROM memories
@@ -50,7 +49,6 @@ export async function consolidateMemories(
 
   if (result.rows.length === 0) return [];
 
-  // Group by namespace
   const groups = new Map<string, StaleMemoryGroup>();
   for (const row of result.rows) {
     const ns = row.namespace as string;
@@ -75,13 +73,13 @@ export async function consolidateMemories(
         .map((m, i) => `${i + 1}. ${m.content}`)
         .join("\n");
 
-      const summary = await generateText(SUMMARIZE_PROMPT + memoryList);
-      const embedding = await generateEmbedding(summary);
+      const summary = await deps.generateText(SUMMARIZE_PROMPT + memoryList);
+      const embedding = await deps.generateEmbedding(summary);
       const maxImportance = Math.max(
         ...group.memories.map((m) => m.importance),
       );
 
-      await pool.query(
+      await deps.pool.query(
         `
         INSERT INTO memories (namespace, content, embedding, importance, metadata)
         VALUES ($1, $2, $3::vector, $4, $5)
@@ -100,7 +98,7 @@ export async function consolidateMemories(
       );
 
       const ids = group.memories.map((m) => m.id);
-      await pool.query(
+      await deps.pool.query(
         `UPDATE memories SET archived = true WHERE id = ANY($1::uuid[])`,
         [ids],
       );

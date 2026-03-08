@@ -1,6 +1,5 @@
-import { db, pool } from "../db/index";
+import type { MemoryDeps } from "../config";
 import { memories, type Memory } from "../db/schema";
-import { generateEmbedding } from "./embedding";
 import { scoreImportance } from "./importance";
 import { eq } from "drizzle-orm";
 
@@ -10,10 +9,11 @@ const DEDUP_SIMILARITY_THRESHOLD = 0.95;
  * Check if a very similar memory already exists in this namespace.
  */
 async function findDuplicate(
+  deps: Pick<MemoryDeps, "pool">,
   namespace: string,
   embedding: number[],
 ): Promise<Memory | null> {
-  const result = await pool.query(
+  const result = await deps.pool.query(
     `
     SELECT id, namespace, content, embedding, importance, tags, memory_type,
            archived, expires_at, created_at, last_accessed, metadata,
@@ -39,20 +39,19 @@ export interface StoreMemoryOptions {
 }
 
 export async function storeMemory(
+  deps: MemoryDeps,
   namespace: string,
   content: string,
   options: StoreMemoryOptions = {},
 ): Promise<Memory & { deduplicated?: boolean }> {
   const { metadata = {}, tags = [], ttl } = options;
 
-  // Generate embedding and score importance in parallel
   const [embedding, importance] = await Promise.all([
-    generateEmbedding(content),
-    scoreImportance(content),
+    deps.generateEmbedding(content),
+    scoreImportance(deps, content),
   ]);
 
-  // Check for duplicate
-  const existing = await findDuplicate(namespace, embedding);
+  const existing = await findDuplicate(deps, namespace, embedding);
   if (existing) {
     return { ...existing, deduplicated: true } as Memory & {
       deduplicated: boolean;
@@ -61,7 +60,7 @@ export async function storeMemory(
 
   const expiresAt = ttl ? new Date(Date.now() + ttl * 1000) : undefined;
 
-  const [memory] = await db
+  const [memory] = await deps.db
     .insert(memories)
     .values({
       namespace,
@@ -85,6 +84,7 @@ export async function storeMemory(
  * Batch store multiple memories in a single namespace.
  */
 export async function storeMemories(
+  deps: MemoryDeps,
   namespace: string,
   items: {
     content: string;
@@ -93,12 +93,11 @@ export async function storeMemories(
     ttl?: number;
   }[],
 ): Promise<Memory[]> {
-  // Process all items in parallel
   const processed = await Promise.all(
     items.map(async (item) => {
       const [embedding, importance] = await Promise.all([
-        generateEmbedding(item.content),
-        scoreImportance(item.content),
+        deps.generateEmbedding(item.content),
+        scoreImportance(deps, item.content),
       ]);
       return {
         namespace,
@@ -114,21 +113,25 @@ export async function storeMemories(
     }),
   );
 
-  const result = await db.insert(memories).values(processed).returning();
+  const result = await deps.db.insert(memories).values(processed).returning();
   return result;
 }
 
 export async function getMemories(
+  deps: MemoryDeps,
   namespace: string,
   limit = 50,
 ): Promise<Memory[]> {
-  return db.query.memories.findMany({
+  return deps.db.query.memories.findMany({
     where: eq(memories.namespace, namespace),
     limit,
     orderBy: (memories, { desc }) => [desc(memories.createdAt)],
   });
 }
 
-export async function deleteMemory(id: string): Promise<void> {
-  await db.delete(memories).where(eq(memories.id, id));
+export async function deleteMemory(
+  deps: MemoryDeps,
+  id: string,
+): Promise<void> {
+  await deps.db.delete(memories).where(eq(memories.id, id));
 }

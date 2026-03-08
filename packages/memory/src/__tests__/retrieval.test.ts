@@ -1,15 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-
-vi.mock("../db/index", () => ({
-  pool: { query: vi.fn() },
-}));
-
-vi.mock("../services/embedding", () => ({
-  generateEmbedding: vi.fn().mockResolvedValue(new Array(1536).fill(0.1)),
-}));
-
-import { pool } from "../db/index";
+import type { MemoryDeps } from "../config";
 import { retrieveMemories } from "../services/retrieval";
+
+const mockPool = { query: vi.fn() };
+const mockGenerateEmbedding = vi
+  .fn()
+  .mockResolvedValue(new Array(1536).fill(0.1));
+
+const deps = {
+  pool: mockPool,
+  generateEmbedding: mockGenerateEmbedding,
+} as unknown as Pick<MemoryDeps, "pool" | "generateEmbedding">;
 
 describe("Retrieval Service", () => {
   beforeEach(() => {
@@ -17,7 +18,7 @@ describe("Retrieval Service", () => {
   });
 
   it("should return scored results", async () => {
-    vi.mocked(pool.query)
+    mockPool.query
       .mockResolvedValueOnce({
         rows: [
           {
@@ -30,10 +31,10 @@ describe("Retrieval Service", () => {
             recency: 0.5,
           },
         ],
-      } as any)
-      .mockResolvedValueOnce({ rows: [] } as any); // last_accessed update
+      })
+      .mockResolvedValueOnce({ rows: [] }); // last_accessed update
 
-    const result = await retrieveMemories("user:alice", "test query");
+    const result = await retrieveMemories(deps, "user:alice", "test query");
 
     expect(result).toHaveLength(1);
     expect(result[0]!.score).toBeGreaterThan(0);
@@ -41,33 +42,33 @@ describe("Retrieval Service", () => {
   });
 
   it("should pass tag filter to SQL", async () => {
-    vi.mocked(pool.query).mockResolvedValue({ rows: [] } as any);
+    mockPool.query.mockResolvedValue({ rows: [] });
 
-    await retrieveMemories("user:alice", "test", {
+    await retrieveMemories(deps, "user:alice", "test", {
       tags: ["preference"],
       limit: 5,
     });
 
-    const callArgs = vi.mocked(pool.query).mock.calls[0]!;
+    const callArgs = mockPool.query.mock.calls[0]!;
     const sql = callArgs[0] as string;
     expect(sql).toContain("tags && $");
   });
 
   it("should pass minImportance filter to SQL", async () => {
-    vi.mocked(pool.query).mockResolvedValue({ rows: [] } as any);
+    mockPool.query.mockResolvedValue({ rows: [] });
 
-    await retrieveMemories("user:alice", "test", {
+    await retrieveMemories(deps, "user:alice", "test", {
       minImportance: 0.7,
       limit: 5,
     });
 
-    const callArgs = vi.mocked(pool.query).mock.calls[0]!;
+    const callArgs = mockPool.query.mock.calls[0]!;
     const sql = callArgs[0] as string;
     expect(sql).toContain("importance >= $");
   });
 
   it("should update last_accessed for retrieved memories", async () => {
-    vi.mocked(pool.query)
+    mockPool.query
       .mockResolvedValueOnce({
         rows: [
           {
@@ -80,29 +81,26 @@ describe("Retrieval Service", () => {
             recency: "0.5",
           },
         ],
-      } as any)
-      .mockResolvedValue({ rows: [] } as any);
+      })
+      .mockResolvedValue({ rows: [] });
 
-    const results = await retrieveMemories("user:alice", "test query");
+    const results = await retrieveMemories(deps, "user:alice", "test query");
 
     expect(results).toHaveLength(1);
-    // Find the UPDATE call among all calls
-    const updateCall = vi
-      .mocked(pool.query)
-      .mock.calls.find(
-        (call) =>
-          typeof call[0] === "string" &&
-          call[0].toLowerCase().includes("update memories set last_accessed"),
-      );
+    const updateCall = mockPool.query.mock.calls.find(
+      (call: any[]) =>
+        typeof call[0] === "string" &&
+        call[0].toLowerCase().includes("update memories set last_accessed"),
+    );
     expect(updateCall).toBeDefined();
   });
 
   it("should accept numeric limit for backwards compat", async () => {
-    vi.mocked(pool.query).mockResolvedValue({ rows: [] } as any);
+    mockPool.query.mockResolvedValue({ rows: [] });
 
-    await retrieveMemories("user:alice", "test", 5);
+    await retrieveMemories(deps, "user:alice", "test", 5);
 
-    const callArgs = vi.mocked(pool.query).mock.calls[0]!;
+    const callArgs = mockPool.query.mock.calls[0]!;
     const params = callArgs[1] as any[];
     expect(params[params.length - 1]).toBe(5);
   });
