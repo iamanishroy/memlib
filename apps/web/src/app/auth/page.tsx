@@ -1,17 +1,7 @@
-import { SignIn } from "@clerk/nextjs";
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
+"use client";
 
-export default async function AuthPage() {
-  const { userId } = await auth();
+import LoginForm from "@/components/login-02";
 
-  if (userId) {
-    redirect("/dash");
-  }
-
-  return (
-    <div className="flex items-center justify-center min-h-dvh">
-      <SignIn routing="hash" />
-    </div>
-  );
+export default function AuthPage() {
+  return <LoginForm />;
 }

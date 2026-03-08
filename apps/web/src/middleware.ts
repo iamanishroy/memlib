@@ -1,10 +1,17 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export default clerkMiddleware();
+export function middleware(request: NextRequest) {
+  const sessionCookie = request.cookies.get("better-auth.session_token");
+
+  const isProtectedRoute = request.nextUrl.pathname.startsWith("/dash");
+
+  if (isProtectedRoute && !sessionCookie) {
+    return NextResponse.redirect(new URL("/auth", request.url));
+  }
+
+  return NextResponse.next();
+}
 
 export const config = {
-  matcher: [
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    "/(api|trpc)(.*)",
-  ],
+  matcher: ["/dash/:path*"],
 };

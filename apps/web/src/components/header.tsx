@@ -1,9 +1,9 @@
 "use client";
 
-import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 
 import { ModeToggle } from "./mode-toggle";
+import UserMenu from "./user-menu";
 
 export default function Header() {
   const links = [
@@ -25,12 +25,7 @@ export default function Header() {
         </nav>
         <div className="flex items-center gap-2">
           <ModeToggle />
-          <Show when="signed-out">
-            <SignInButton mode="redirect" forceRedirectUrl="/auth" />
-          </Show>
-          <Show when="signed-in">
-            <UserButton />
-          </Show>
+          <UserMenu />
         </div>
       </div>
       <hr />

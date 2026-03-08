@@ -27,7 +27,7 @@ import { Logo } from "@/components/sidebar/logo";
 import type { Route } from "./nav-main";
 import DashboardNavigation from "@/components/sidebar/nav-main";
 import { ProjectSwitcher } from "@/components/sidebar/team-switcher";
-import { UserButton } from "@clerk/nextjs";
+import UserMenu from "@/components/user-menu";
 
 const dashboardRoutes: Route[] = [
   {
@@ -135,7 +135,7 @@ export function DashboardSidebar() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8 }}
         >
-          <UserButton />
+          <UserMenu />
           <SidebarTrigger />
         </motion.div>
       </SidebarHeader>

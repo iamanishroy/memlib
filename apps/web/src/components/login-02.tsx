@@ -1,10 +1,11 @@
 "use client";
 
 import { Button } from "@memz/ui/components/button";
-import { Input } from "@memz/ui/components/input";
-import { Label } from "@memz/ui/components/label";
 import { Separator } from "@memz/ui/components/separator";
-import { type JSX, type SVGProps, useState } from "react";
+import { type JSX, type SVGProps } from "react";
+
+import { Logo } from "@/components/sidebar/logo";
+import { authClient } from "@/lib/auth-client";
 
 const GoogleIcon = (
   props: JSX.IntrinsicAttributes & SVGProps<SVGSVGElement>,
@@ -22,72 +23,50 @@ const GitHubIcon = (
   </svg>
 );
 
-export default function AuthForm() {
-  const [email, setEmail] = useState("");
+export default function LoginForm() {
+  const handleGoogleSignIn = async () => {
+    await authClient.signIn.social({
+      provider: "google",
+      callbackURL: "/dash",
+    });
+  };
 
-  const handleEmailSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-    // Redirect to Kinde login with login_hint so it goes directly to email/magic link flow
-    window.location.href = `/api/auth/login?login_hint=${encodeURIComponent(email)}`;
+  const handleGitHubSignIn = async () => {
+    await authClient.signIn.social({
+      provider: "github",
+      callbackURL: "/dash",
+    });
   };
 
   return (
     <div className="flex items-center justify-center min-h-dvh">
       <div className="flex flex-1 flex-col justify-center px-4 py-10 lg:px-6">
         <div className="sm:mx-auto sm:w-full sm:max-w-sm">
-          <h2 className="text-balance text-center text-xl font-semibold text-foreground">
+          <div className="flex flex-col items-center gap-2 mb-8">
+            <Logo className="h-10 w-10" />
+            <span className="text-xl font-semibold text-foreground">memz</span>
+          </div>
+
+          <h2 className="text-balance text-center text-base text-muted-foreground mb-6">
             Log in or create account
           </h2>
-
-          <form onSubmit={handleEmailSubmit} className="mt-6">
-            <Label htmlFor="email" className="font-medium text-foreground">
-              Email
-            </Label>
-            <Input
-              type="email"
-              id="email"
-              name="email"
-              autoComplete="email"
-              placeholder="john@company.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-2 h-10 rounded-md px-3 text-sm"
-              required
-            />
-            <Button type="submit" className="mt-4 w-full">
-              Continue with Email
-            </Button>
-          </form>
-
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <Separator className="w-full" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                or with
-              </span>
-            </div>
-          </div>
 
           <div className="flex flex-col gap-3">
             <Button
               variant="outline"
-              className="w-full gap-2"
-              render={<a href="/api/auth/login?connection_id=google" />}
+              className="w-full gap-2 py-2"
+              onClick={handleGoogleSignIn}
             >
               <GoogleIcon className="size-5" aria-hidden={true} />
-              <span>Sign in with Google</span>
+              <span className="text-sm font-medium">Sign in with Google</span>
             </Button>
-
             <Button
               variant="outline"
-              className="w-full gap-2"
-              render={<a href="/api/auth/login?connection_id=github" />}
+              className="w-full gap-2 py-2"
+              onClick={handleGitHubSignIn}
             >
               <GitHubIcon className="size-5" aria-hidden={true} />
-              <span>Sign in with GitHub</span>
+              <span className="text-sm font-medium">Sign in with GitHub</span>
             </Button>
           </div>
 

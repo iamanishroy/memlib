@@ -1,20 +1,21 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
+import { authClient } from "@/lib/auth-client";
+
 export default function SettingsPage() {
-  const { userId, isLoaded } = useAuth();
+  const { data: session, isPending } = authClient.useSession();
   const router = useRouter();
 
   useEffect(() => {
-    if (isLoaded && !userId) {
+    if (!isPending && !session) {
       router.push("/auth");
     }
-  }, [isLoaded, userId, router]);
+  }, [isPending, session, router]);
 
-  if (!isLoaded || !userId) return null;
+  if (isPending || !session) return null;
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6">
@@ -28,7 +29,7 @@ export default function SettingsPage() {
       <div className="draft">
         <h2>UI Plan — General Settings</h2>
         <ul>
-          <li>Profile section — name, email, avatar (synced from Clerk)</li>
+          <li>Profile section — name, email, avatar</li>
           <li>Workspace settings — name, description</li>
           <li>Default memory privacy — public/private/workspace</li>
           <li>Language and timezone preferences</li>

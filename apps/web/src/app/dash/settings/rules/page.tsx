@@ -1,20 +1,21 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
+import { authClient } from "@/lib/auth-client";
+
 export default function MemoryRulesPage() {
-  const { userId, isLoaded } = useAuth();
+  const { data: session, isPending } = authClient.useSession();
   const router = useRouter();
 
   useEffect(() => {
-    if (isLoaded && !userId) {
+    if (!isPending && !session) {
       router.push("/auth");
     }
-  }, [isLoaded, userId, router]);
+  }, [isPending, session, router]);
 
-  if (!isLoaded || !userId) return null;
+  if (isPending || !session) return null;
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6">
