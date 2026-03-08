@@ -16,22 +16,51 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@memz/ui/components/sidebar";
-import { ChevronsUpDown, Plus } from "lucide-react";
+import { ChevronsUpDown, Folder, Plus } from "lucide-react";
 import * as React from "react";
+import { useParams, useRouter } from "next/navigation";
 
 type Project = {
+  id: string;
   name: string;
-  logo: React.ElementType;
-  plan: string;
 };
 
-export function ProjectSwitcher({ projects }: { projects: Project[] }) {
+export function ProjectSwitcher() {
   const { isMobile } = useSidebar();
-  const [activeProject, setActiveProject] = React.useState(projects[0]);
+  const router = useRouter();
+  const params = useParams();
+  const currentProjectId = params?.projectId as string | undefined;
 
-  if (!activeProject) return null;
+  const [projects, setProjects] = React.useState<Project[]>([]);
+  const [loading, setLoading] = React.useState(true);
 
-  const Logo = activeProject.logo;
+  React.useEffect(() => {
+    fetch("/api/projects")
+      .then((res) => res.json())
+      .then((data) => {
+        setProjects(Array.isArray(data) ? data : []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const activeProject = projects.find((p) => p.id === currentProjectId);
+
+  if (loading) {
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton size="lg" className="animate-pulse">
+            <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-muted" />
+            <div className="grid flex-1 gap-1">
+              <div className="h-3 w-20 rounded bg-muted" />
+              <div className="h-2 w-12 rounded bg-muted" />
+            </div>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    );
+  }
 
   return (
     <SidebarMenu>
@@ -46,13 +75,15 @@ export function ProjectSwitcher({ projects }: { projects: Project[] }) {
             }
           >
             <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-background text-foreground">
-              <Logo className="size-4" />
+              <Folder className="size-4" />
             </div>
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-semibold">
-                {activeProject.name}
+                {activeProject?.name || "Select Project"}
               </span>
-              <span className="truncate text-xs">{activeProject.plan}</span>
+              <span className="truncate text-xs text-muted-foreground">
+                {projects.length} project{projects.length !== 1 ? "s" : ""}
+              </span>
             </div>
             <ChevronsUpDown className="ml-auto" />
           </DropdownMenuTrigger>
@@ -68,12 +99,12 @@ export function ProjectSwitcher({ projects }: { projects: Project[] }) {
               </DropdownMenuLabel>
               {projects.map((project, index) => (
                 <DropdownMenuItem
-                  key={project.name}
-                  onClick={() => setActiveProject(project)}
+                  key={project.id}
+                  onClick={() => router.push(`/dash/${project.id}`)}
                   className="gap-2 p-2"
                 >
                   <div className="flex size-6 items-center justify-center rounded-sm border">
-                    <project.logo className="size-4 shrink-0" />
+                    <Folder className="size-4 shrink-0" />
                   </div>
                   {project.name}
                   <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>
@@ -81,12 +112,15 @@ export function ProjectSwitcher({ projects }: { projects: Project[] }) {
               ))}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2 p-2">
+            <DropdownMenuItem
+              className="gap-2 p-2"
+              onClick={() => router.push("/onboard")}
+            >
               <div className="flex size-6 items-center justify-center rounded-md border bg-background">
                 <Plus className="size-4" />
               </div>
               <div className="font-medium text-muted-foreground">
-                Add project
+                New project
               </div>
             </DropdownMenuItem>
           </DropdownMenuContent>

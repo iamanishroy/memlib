@@ -1,48 +1,39 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-
+import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 
-export default function DashPage() {
-  const { data: session, isPending } = authClient.useSession();
+export default function DashRedirect() {
   const router = useRouter();
+  const { data: session, isPending } = authClient.useSession();
 
   useEffect(() => {
-    if (!isPending && !session) {
-      router.push("/auth");
-    }
-  }, [isPending, session, router]);
+    if (isPending) return;
 
-  if (isPending || !session) return null;
+    if (!session) {
+      router.replace("/auth");
+      return;
+    }
+
+    // Fetch user's projects and redirect
+    fetch("/api/projects")
+      .then((res) => res.json() as Promise<{ id: string }[]>)
+      .then((projects) => {
+        if (projects.length > 0) {
+          router.replace(`/dash/${projects[0]!.id}`);
+        } else {
+          router.replace("/onboard");
+        }
+      })
+      .catch(() => {
+        router.replace("/onboard");
+      });
+  }, [session, isPending, router]);
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
-      <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Welcome back{session.user.name ? `, ${session.user.name}` : ""}!
-        </p>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded-lg border p-4">
-          <h3 className="font-medium">Memories</h3>
-          <p className="text-2xl font-bold">0</p>
-          <p className="text-sm text-muted-foreground">Total stored</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <h3 className="font-medium">Recalls</h3>
-          <p className="text-2xl font-bold">0</p>
-          <p className="text-sm text-muted-foreground">This week</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <h3 className="font-medium">Connections</h3>
-          <p className="text-2xl font-bold">0</p>
-          <p className="text-sm text-muted-foreground">AI-discovered</p>
-        </div>
-      </div>
+    <div className="flex min-h-dvh items-center justify-center">
+      <div className="animate-pulse text-muted-foreground">Loading...</div>
     </div>
   );
 }

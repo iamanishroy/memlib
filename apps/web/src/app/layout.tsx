@@ -17,6 +17,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "memz",
   description: "memz",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({

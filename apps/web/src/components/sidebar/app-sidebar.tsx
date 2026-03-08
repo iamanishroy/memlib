@@ -23,88 +23,91 @@ import {
   Webhook,
   Zap,
 } from "lucide-react";
+import { useParams } from "next/navigation";
 import { Logo } from "@/components/sidebar/logo";
 import type { Route } from "./nav-main";
 import DashboardNavigation from "@/components/sidebar/nav-main";
 import { ProjectSwitcher } from "@/components/sidebar/team-switcher";
 import UserMenu from "@/components/user-menu";
 
-const dashboardRoutes: Route[] = [
-  {
-    id: "home",
-    title: "Home",
-    icon: <Home className="size-4" />,
-    link: "/dash",
-  },
-  {
-    id: "memories",
-    title: "Memories",
-    icon: <Brain className="size-4" />,
-    link: "/dash/memories",
-  },
-  {
-    id: "recall",
-    title: "Recall",
-    icon: <Search className="size-4" />,
-    link: "/dash/recall",
-  },
-  {
-    id: "integrations",
-    title: "Integrations",
-    icon: <Zap className="size-4" />,
-    link: "/dash/integrations",
-    subs: [
-      {
-        title: "API Keys",
-        link: "/dash/integrations/api-keys",
-        icon: <Key className="size-4" />,
-      },
-      {
-        title: "Webhooks",
-        link: "/dash/integrations/webhooks",
-        icon: <Webhook className="size-4" />,
-      },
-      {
-        title: "Connected Apps",
-        link: "/dash/integrations/apps",
-        icon: <LinkIcon className="size-4" />,
-      },
-    ],
-  },
-  {
-    id: "insights",
-    title: "Insights",
-    icon: <Sparkles className="size-4" />,
-    link: "/dash/insights",
-  },
-  {
-    id: "analytics",
-    title: "Analytics",
-    icon: <TrendingUp className="size-4" />,
-    link: "/dash/analytics",
-  },
-  {
-    id: "settings",
-    title: "Settings",
-    icon: <Settings className="size-4" />,
-    link: "/dash/settings",
-    subs: [
-      { title: "General", link: "/dash/settings" },
-      { title: "Memory Rules", link: "/dash/settings/rules" },
-      { title: "Consolidation", link: "/dash/settings/consolidation" },
-      { title: "Appearance", link: "/dash/settings/appearance" },
-    ],
-  },
-];
+function useDashboardRoutes(): Route[] {
+  const params = useParams();
+  const projectId = params?.projectId as string | undefined;
+  const base = projectId ? `/dash/${projectId}` : "/dash";
 
-const projects = [
-  { name: "Personal", logo: Logo, plan: "Free" },
-  { name: "Work", logo: Logo, plan: "Free" },
-];
+  return [
+    {
+      id: "home",
+      title: "Home",
+      icon: <Home className="size-4" />,
+      link: base,
+    },
+    {
+      id: "memories",
+      title: "Memories",
+      icon: <Brain className="size-4" />,
+      link: `${base}/memories`,
+    },
+    {
+      id: "recall",
+      title: "Recall",
+      icon: <Search className="size-4" />,
+      link: `${base}/recall`,
+    },
+    {
+      id: "integrations",
+      title: "Integrations",
+      icon: <Zap className="size-4" />,
+      link: `${base}/integrations`,
+      subs: [
+        {
+          title: "API Keys",
+          link: `${base}/integrations/api-keys`,
+          icon: <Key className="size-4" />,
+        },
+        {
+          title: "Webhooks",
+          link: `${base}/integrations/webhooks`,
+          icon: <Webhook className="size-4" />,
+        },
+        {
+          title: "Connected Apps",
+          link: `${base}/integrations/apps`,
+          icon: <LinkIcon className="size-4" />,
+        },
+      ],
+    },
+    {
+      id: "insights",
+      title: "Insights",
+      icon: <Sparkles className="size-4" />,
+      link: `${base}/insights`,
+    },
+    {
+      id: "analytics",
+      title: "Analytics",
+      icon: <TrendingUp className="size-4" />,
+      link: `${base}/analytics`,
+    },
+    {
+      id: "settings",
+      title: "Settings",
+      icon: <Settings className="size-4" />,
+      link: `${base}/settings`,
+      subs: [
+        { title: "General", link: `${base}/settings` },
+        { title: "Memory Rules", link: `${base}/settings/rules` },
+        { title: "Consolidation", link: `${base}/settings/consolidation` },
+        { title: "Appearance", link: `${base}/settings/appearance` },
+      ],
+    },
+  ];
+}
 
 export function DashboardSidebar() {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
+  const dashboardRoutes = useDashboardRoutes();
 
   return (
     <Sidebar variant="floating" collapsible="icon">
@@ -143,7 +146,7 @@ export function DashboardSidebar() {
         <DashboardNavigation routes={dashboardRoutes} />
       </SidebarContent>
       <SidebarFooter className="px-2">
-        <ProjectSwitcher projects={projects} />
+        <ProjectSwitcher />
       </SidebarFooter>
     </Sidebar>
   );

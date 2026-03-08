@@ -2,7 +2,6 @@
 
 import { SidebarInset, SidebarProvider } from "@memz/ui/components/sidebar";
 import { DashboardSidebar } from "@/components/sidebar/app-sidebar";
-import { Onboarding01 } from "@/components/onboarding";
 
 export default function DashLayout({
   children,
@@ -15,9 +14,7 @@ export default function DashLayout({
         <DashboardSidebar />
 
         <SidebarInset className="flex flex-col overflow-auto">
-          {/* {children} */}
-
-          <Onboarding01 />
+          {children}
         </SidebarInset>
       </div>
     </SidebarProvider>
