@@ -1,107 +1,150 @@
 # memz
 
-This project was created with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack), a modern TypeScript stack that combines Next.js, Hono, ORPC, and more.
+A memory API platform — store, recall, and manage AI memories with semantic search.
 
-## Features
+## Tech Stack
 
-- **TypeScript** - For type safety and improved developer experience
-- **Next.js** - Full-stack React framework
-- **TailwindCSS** - Utility-first CSS for rapid UI development
-- **Shared UI package** - shadcn/ui primitives live in `packages/ui`
-- **Hono** - Lightweight, performant server framework
-- **oRPC** - End-to-end type-safe APIs with OpenAPI integration
-- **workers** - Runtime environment
-- **Drizzle** - TypeScript-first ORM
-- **PostgreSQL** - Database engine
-- **Authentication** - Better-Auth
-- **Turborepo** - Optimized monorepo build system
-
-## Getting Started
-
-First, install the dependencies:
-
-```bash
-npm install
-```
-
-## Database Setup
-
-This project uses PostgreSQL with Drizzle ORM.
-
-1. Make sure you have a PostgreSQL database set up.
-2. Update your `apps/server/.env` file with your PostgreSQL connection details.
-
-3. Apply the schema to your database:
-
-```bash
-npm run db:push
-```
-
-Then, run the development server:
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3001](http://localhost:3001) in your browser to see the web application.
-The API is running at [http://localhost:3000](http://localhost:3000).
-
-## UI Customization
-
-React web apps in this stack share shadcn/ui primitives through `packages/ui`.
-
-- Change design tokens and global styles in `packages/ui/src/styles/globals.css`
-- Update shared primitives in `packages/ui/src/components/*`
-- Adjust shadcn aliases or style config in `packages/ui/components.json` and `apps/web/components.json`
-
-### Add more shared components
-
-Run this from the project root to add more primitives to the shared UI package:
-
-```bash
-npx shadcn@latest add accordion dialog popover sheet table -c packages/ui
-```
-
-Import shared components like this:
-
-```tsx
-import { Button } from "@memz/ui/components/button";
-```
-
-### Add app-specific blocks
-
-If you want to add app-specific blocks instead of shared primitives, run the shadcn CLI from `apps/web`.
-
-## Deployment (Cloudflare via Alchemy)
-
-- Dev: cd apps/server && npm run dev
-- Deploy: cd apps/server && npm run deploy
-- Destroy: cd apps/server && npm run destroy
-
-For more details, see the guide on [Deploying to Cloudflare with Alchemy](https://www.better-t-stack.dev/docs/guides/cloudflare-alchemy).
+- **Next.js** — Web dashboard
+- **Hono** — API server on Cloudflare Workers
+- **oRPC** — Type-safe APIs with OpenAPI + REST endpoints
+- **Drizzle ORM** — TypeScript-first database layer
+- **PostgreSQL** — Database (via Prisma Data Proxy)
+- **Better-Auth** — Authentication (Google, GitHub, email)
+- **Turborepo** — Monorepo build system
 
 ## Project Structure
 
 ```
 memz/
 ├── apps/
-│   ├── web/         # Frontend application (Next.js)
-│   └── server/      # Backend API (Hono, ORPC)
+│   ├── web/           # Next.js dashboard
+│   └── server/        # Cloudflare Worker API
 ├── packages/
-│   ├── ui/          # Shared shadcn/ui components and styles
-│   ├── api/         # API layer / business logic
-│   ├── auth/        # Authentication configuration & logic
-│   └── db/          # Database schema & queries
+│   ├── api/           # oRPC routes & middleware
+│   ├── auth/          # Auth config (better-auth)
+│   ├── db/            # Drizzle schema & connection
+│   ├── memory/        # Memory service (store, recall, consolidate)
+│   ├── sdk/           # Published SDK (@anishroy/memz)
+│   ├── env/           # Shared env config
+│   ├── ui/            # Shared UI components
+│   └── infra/         # Alchemy infra-as-code
+```
+
+## Getting Started
+
+```bash
+npm install
+```
+
+### Environment Variables
+
+Copy `apps/server/.env.example` → `apps/server/.env` and fill in:
+
+```env
+DATABASE_URL=postgres://...
+BETTER_AUTH_SECRET=your-secret
+BETTER_AUTH_URL=http://localhost:8002
+CORS_ORIGIN=http://localhost:8001
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GITHUB_CLIENT_ID=...
+GITHUB_CLIENT_SECRET=...
+```
+
+### Database Setup
+
+```bash
+npm run db:push
+```
+
+### Run Dev
+
+```bash
+npm run dev
+```
+
+- Web: [http://localhost:8001](http://localhost:8001)
+- API: [http://localhost:8002](http://localhost:8002)
+
+## API Endpoints
+
+All API routes are under `/v1` and require an API key (`Authorization: Bearer sk_...`).
+
+| Method   | Path                     | Permission   | Description          |
+| -------- | ------------------------ | ------------ | -------------------- |
+| `GET`    | `/v1/health`             | Read         | Health check         |
+| `GET`    | `/v1/memory`             | Read         | List memories        |
+| `POST`   | `/v1/memory`             | Read & Write | Store a memory       |
+| `POST`   | `/v1/memory/batch`       | Read & Write | Batch store          |
+| `POST`   | `/v1/memory/recall`      | Read         | Semantic search      |
+| `DELETE` | `/v1/memory/{memoryId}`  | Admin        | Delete a memory      |
+| `POST`   | `/v1/memory/migrate`     | Admin        | Run migrations       |
+| `POST`   | `/v1/memory/consolidate` | Admin        | Consolidate memories |
+
+### Quick Example
+
+```bash
+curl -X POST https://your-worker.workers.dev/v1/memory \
+  -H "Authorization: Bearer sk_YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"namespace": "user:alice", "content": "Loves TypeScript"}'
+```
+
+## SDK
+
+Install the published SDK:
+
+```bash
+npm install @anishroy/memz
+```
+
+## Deployment
+
+### Prerequisites
+
+1. [Cloudflare account](https://dash.cloudflare.com)
+2. **Cloudflare API Token** — create at [API Tokens](https://dash.cloudflare.com/profile/api-tokens) using the "Edit Cloudflare Workers" template
+
+### Manual Deploy
+
+```bash
+# 1. Login to Cloudflare (first time only)
+npx wrangler login
+
+# 2. Configure Alchemy (first time only)
+cd packages/infra && npx alchemy configure
+
+# 3. Deploy
+cd packages/infra && npm run deploy
+```
+
+### CI/CD (GitHub Actions)
+
+Pushes to `main` auto-deploy via `.github/workflows/deploy.yml`.
+
+**Setup:** Add `CLOUDFLARE_API_TOKEN` as a [GitHub repository secret](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions).
+
+1. Go to your repo → Settings → Secrets → Actions
+2. Add `CLOUDFLARE_API_TOKEN` with your Cloudflare API token
+
+Every push to `main` will:
+
+- Install dependencies
+- Run type checks
+- Deploy the Worker via `wrangler deploy`
+
+### Teardown
+
+```bash
+cd packages/infra && npm run destroy
 ```
 
 ## Available Scripts
 
-- `npm run dev`: Start all applications in development mode
-- `npm run build`: Build all applications
-- `npm run dev:web`: Start only the web application
-- `npm run dev:server`: Start only the server
-- `npm run check-types`: Check TypeScript types across all apps
-- `npm run db:push`: Push schema changes to database
-- `npm run db:generate`: Generate database client/types
-- `npm run db:migrate`: Run database migrations
-- `npm run db:studio`: Open database studio UI
+| Script                | Description                          |
+| --------------------- | ------------------------------------ |
+| `npm run dev`         | Start all apps in dev mode           |
+| `npm run build`       | Build all apps                       |
+| `npm run check-types` | TypeScript check across all packages |
+| `npm run db:push`     | Push schema changes to database      |
+| `npm run db:studio`   | Open Drizzle Studio                  |

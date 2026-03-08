@@ -18,7 +18,7 @@ export default function DashRedirect() {
 
     // Fetch user's projects and redirect
     fetch("/api/projects")
-      .then((res) => res.json())
+      .then((res) => res.json() as Promise<any[]>)
       .then((projects) => {
         if (projects.length > 0) {
           router.replace(`/dash/${projects[0].id}`);
