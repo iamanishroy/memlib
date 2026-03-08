@@ -4,8 +4,8 @@ import {
   Avatar,
   AvatarFallback,
   AvatarImage,
-} from "@memz/ui/components/avatar";
-import { Button } from "@memz/ui/components/button";
+} from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +14,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@memz/ui/components/dropdown-menu";
+} from "@/components/ui/dropdown-menu";
 import { BellIcon } from "lucide-react";
 
 type Notification = {

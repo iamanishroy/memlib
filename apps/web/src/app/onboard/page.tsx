@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
-import { Onboarding } from "@/components/onboarding";
+import { Onboarding } from "@/components/onboard";
 
 export default function OnboardPage() {
   const router = useRouter();

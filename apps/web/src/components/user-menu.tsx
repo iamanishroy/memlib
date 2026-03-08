@@ -1,4 +1,4 @@
-import { Button } from "@memz/ui/components/button";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,8 +7,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@memz/ui/components/dropdown-menu";
-import { Skeleton } from "@memz/ui/components/skeleton";
+} from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 

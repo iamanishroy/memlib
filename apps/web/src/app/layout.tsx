@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   title: "memz",
   description: "memz",
   icons: {
-    icon: "/icon.svg",
+    icon: "/favicon.ico",
   },
 };
 

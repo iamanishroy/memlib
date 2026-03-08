@@ -1,6 +1,6 @@
 "use client";
 
-import { SidebarInset, SidebarProvider } from "@memz/ui/components/sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { DashboardSidebar } from "@/components/sidebar/app-sidebar";
 
 export default function DashLayout({

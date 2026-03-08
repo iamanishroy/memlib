@@ -7,8 +7,8 @@ import {
   SidebarHeader,
   SidebarTrigger,
   useSidebar,
-} from "@memz/ui/components/sidebar";
-import { cn } from "@memz/ui/lib/utils";
+} from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import {
   Brain,

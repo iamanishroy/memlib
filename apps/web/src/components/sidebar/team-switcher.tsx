@@ -9,13 +9,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
-} from "@memz/ui/components/dropdown-menu";
+} from "@/components/ui/dropdown-menu";
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@memz/ui/components/sidebar";
+} from "@/components/ui/sidebar";
 import { ChevronsUpDown, Folder, Plus } from "lucide-react";
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";

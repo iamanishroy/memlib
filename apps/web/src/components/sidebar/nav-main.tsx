@@ -4,7 +4,7 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@memz/ui/components/collapsible";
+} from "@/components/ui/collapsible";
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -13,8 +13,8 @@ import {
   SidebarMenuSubButton,
   SidebarMenuItem as SidebarMenuSubItem,
   useSidebar,
-} from "@memz/ui/components/sidebar";
-import { cn } from "@memz/ui/lib/utils";
+} from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
