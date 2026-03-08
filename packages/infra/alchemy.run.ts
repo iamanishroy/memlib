@@ -18,7 +18,7 @@ export const server = await Worker("server", {
     BETTER_AUTH_URL: alchemy.env.BETTER_AUTH_URL!,
   },
   dev: {
-    port: 3000,
+    port: 8002,
   },
 });
 
