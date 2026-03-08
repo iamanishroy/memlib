@@ -1,5 +1,9 @@
 // Core factory
-export { createMemoryService, type MemoryService } from "./client";
+export {
+  createMemoryService,
+  type MemoryService,
+  type SafeMemory,
+} from "./client";
 
 // Config types
 export type { MemoryConfig, MemoryDeps } from "./config";

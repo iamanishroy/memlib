@@ -23,13 +23,23 @@ import type { ConsolidationResult } from "./services/consolidation";
 
 const { Pool } = pg;
 
+/** Memory without the embedding vector (internal data) */
+export type SafeMemory = Omit<Memory, "embedding">;
+
+function stripEmbedding<T extends { embedding?: unknown }>(
+  obj: T,
+): Omit<T, "embedding"> {
+  const { embedding: _, ...rest } = obj;
+  return rest;
+}
+
 export interface MemoryService {
   /** Store a single memory */
   store(
     namespace: string,
     content: string,
     options?: StoreMemoryOptions,
-  ): Promise<Memory & { deduplicated?: boolean }>;
+  ): Promise<SafeMemory & { deduplicated?: boolean }>;
 
   /** Batch store memories */
   batchStore(
@@ -40,10 +50,10 @@ export interface MemoryService {
       metadata?: Record<string, unknown>;
       ttl?: number;
     }[],
-  ): Promise<Memory[]>;
+  ): Promise<SafeMemory[]>;
 
   /** List memories in a namespace */
-  list(namespace: string, limit?: number): Promise<Memory[]>;
+  list(namespace: string, limit?: number): Promise<SafeMemory[]>;
 
   /** Delete a memory by ID */
   delete(id: string): Promise<void>;
@@ -70,25 +80,12 @@ export interface MemoryService {
 
 /**
  * Create a memory service instance bound to a specific project's config.
- *
- * @example
- * ```ts
- * const memory = createMemoryService({
- *   database: { connectionString: project.databaseUrl },
- *   embedding: { provider: "gemini", apiKey: project.embeddingApiKey },
- *   llm: { provider: "gemini", apiKey: project.llmApiKey, model: project.llmModel },
- * });
- *
- * await memory.migrate();
- * await memory.store("user:alice", "I like TypeScript");
- * const results = await memory.recall("user:alice", "programming");
- * ```
  */
 export function createMemoryService(config: MemoryConfig): MemoryService {
   const pool = new Pool({
     connectionString: config.database.connectionString,
-    max: 10,
-    idleTimeoutMillis: 30000,
+    max: 1,
+    idleTimeoutMillis: 0,
   });
 
   const db = drizzle(pool, { schema });
@@ -98,12 +95,20 @@ export function createMemoryService(config: MemoryConfig): MemoryService {
   const deps: MemoryDeps = { pool, db, generateEmbedding, generateText };
 
   return {
-    store: (namespace, content, options) =>
-      _storeMemory(deps, namespace, content, options),
+    store: async (namespace, content, options) => {
+      const result = await _storeMemory(deps, namespace, content, options);
+      return stripEmbedding(result);
+    },
 
-    batchStore: (namespace, items) => _storeMemories(deps, namespace, items),
+    batchStore: async (namespace, items) => {
+      const result = await _storeMemories(deps, namespace, items);
+      return result.map(stripEmbedding);
+    },
 
-    list: (namespace, limit) => _getMemories(deps, namespace, limit),
+    list: async (namespace, limit) => {
+      const result = await _getMemories(deps, namespace, limit);
+      return result.map(stripEmbedding);
+    },
 
     delete: (id) => _deleteMemory(deps, id),
 

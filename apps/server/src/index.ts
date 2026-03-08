@@ -18,7 +18,7 @@ app.use(
   "/*",
   cors({
     origin: env.CORS_ORIGIN,
-    allowMethods: ["GET", "POST", "OPTIONS"],
+    allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   }),
@@ -26,7 +26,7 @@ app.use(
 
 app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
-export const apiHandler = new OpenAPIHandler(appRouter, {
+const apiHandler = new OpenAPIHandler(appRouter, {
   plugins: [
     new OpenAPIReferencePlugin({
       schemaConverters: [new ZodToJsonSchemaConverter()],
@@ -39,7 +39,7 @@ export const apiHandler = new OpenAPIHandler(appRouter, {
   ],
 });
 
-export const rpcHandler = new RPCHandler(appRouter, {
+const rpcHandler = new RPCHandler(appRouter, {
   interceptors: [
     onError((error) => {
       console.error(error);
@@ -47,28 +47,43 @@ export const rpcHandler = new RPCHandler(appRouter, {
   ],
 });
 
-app.use("/*", async (c, next) => {
+// ── REST API routes (/v1/*) ────────────────────────────────────
+// Lightweight context — NO session auth, just pass raw headers.
+// API key resolution happens lazily inside apiKeyProcedure.
+app.use("/v1/*", async (c) => {
+  const context = {
+    session: null,
+    headers: c.req.raw.headers,
+    databaseUrl: env.DATABASE_URL,
+  };
+
+  const result = await apiHandler.handle(c.req.raw, {
+    prefix: "/v1",
+    context,
+  });
+
+  if (result.matched) {
+    return c.newResponse(result.response.body, result.response);
+  }
+
+  return c.notFound();
+});
+
+// ── RPC routes (/rpc/*) ────────────────────────────────────────
+// Full session context for dashboard/web calls.
+app.use("/rpc/*", async (c) => {
   const context = await createContext({ context: c });
 
-  const rpcResult = await rpcHandler.handle(c.req.raw, {
+  const result = await rpcHandler.handle(c.req.raw, {
     prefix: "/rpc",
-    context: context,
+    context,
   });
 
-  if (rpcResult.matched) {
-    return c.newResponse(rpcResult.response.body, rpcResult.response);
+  if (result.matched) {
+    return c.newResponse(result.response.body, result.response);
   }
 
-  const apiResult = await apiHandler.handle(c.req.raw, {
-    prefix: "/api-reference",
-    context: context,
-  });
-
-  if (apiResult.matched) {
-    return c.newResponse(apiResult.response.body, apiResult.response);
-  }
-
-  await next();
+  return c.notFound();
 });
 
 app.get("/", (c) => {

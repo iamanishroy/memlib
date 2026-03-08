@@ -152,7 +152,7 @@ export default function ApiKeysPage() {
         }),
       });
       if (!res.ok) {
-        const err = await res.json();
+        const err = (await res.json()) as { error?: string };
         throw new Error(err.error || "Failed to create");
       }
       const created: CreatedKeyResponse = await res.json();

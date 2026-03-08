@@ -1,84 +1,89 @@
 import { z } from "zod";
-import { publicProcedure } from "../index";
+import pg from "pg";
+import { apiKeyProcedure } from "../index";
 import { createMemoryService, type MemoryService } from "@memz/memory";
-import { db } from "@memz/db";
-import { project } from "@memz/db/schema/index";
-import { eq } from "drizzle-orm";
 
-// ─── Pool Cache ──────────────────────────────────────────────────
-// Cache MemoryService instances by projectId to avoid creating
-// a new pg Pool on every request.
+const { Client } = pg;
 
-const serviceCache = new Map<
-  string,
-  { service: MemoryService; lastUsed: number }
->();
+// ─── Service Factory ─────────────────────────────────────────────
+// Cloudflare Workers are stateless — create a fresh service per
+// request and close it after. Use ephemeral pg.Client for the
+// project lookup to avoid Pool hangs.
 
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+async function getMemoryService(
+  projectId: string,
+  databaseUrl: string,
+): Promise<MemoryService> {
+  const client = new Client({ connectionString: databaseUrl });
+  try {
+    await client.connect();
+    const result = await client.query(
+      `SELECT database_url, embedding_provider, embedding_api_key,
+              llm_provider, llm_api_key, llm_model
+       FROM project WHERE id = $1 LIMIT 1`,
+      [projectId],
+    );
+    const proj = result.rows[0];
+    if (!proj) throw new Error(`Project not found: ${projectId}`);
 
-async function getMemoryService(projectId: string): Promise<MemoryService> {
-  const cached = serviceCache.get(projectId);
-  if (cached) {
-    cached.lastUsed = Date.now();
-    return cached.service;
-  }
-
-  const proj = await db.query.project.findFirst({
-    where: eq(project.id, projectId),
-  });
-
-  if (!proj) {
-    throw new Error(`Project not found: ${projectId}`);
-  }
-
-  const service = createMemoryService({
-    database: { connectionString: proj.databaseUrl },
-    embedding: {
-      provider: proj.embeddingProvider as "gemini" | "openai",
-      apiKey: proj.embeddingApiKey,
-    },
-    llm: {
-      provider: proj.llmProvider as "gemini" | "openai" | "anthropic",
-      apiKey: proj.llmApiKey,
-      model: proj.llmModel,
-    },
-  });
-
-  serviceCache.set(projectId, { service, lastUsed: Date.now() });
-
-  // Clean up stale entries periodically
-  cleanupCache();
-
-  return service;
-}
-
-function cleanupCache() {
-  const now = Date.now();
-  for (const [key, entry] of serviceCache) {
-    if (now - entry.lastUsed > CACHE_TTL_MS) {
-      entry.service.close().catch(console.error);
-      serviceCache.delete(key);
-    }
+    return createMemoryService({
+      database: { connectionString: proj.database_url },
+      embedding: {
+        provider: proj.embedding_provider as "gemini" | "openai",
+        apiKey: proj.embedding_api_key,
+      },
+      llm: {
+        provider: proj.llm_provider as "gemini" | "openai" | "anthropic",
+        apiKey: proj.llm_api_key,
+        model: proj.llm_model,
+      },
+    });
+  } finally {
+    await client.end();
   }
 }
+
+/** Helper to run a handler with automatic service cleanup */
+async function withService<T>(
+  projectId: string,
+  databaseUrl: string,
+  fn: (service: MemoryService) => Promise<T>,
+): Promise<T> {
+  const service = await getMemoryService(projectId, databaseUrl);
+  try {
+    return await fn(service);
+  } finally {
+    await service.close();
+  }
+}
+
+// ─── Permission Levels ───────────────────────────────────────────
+//   1 = Read          → list, recall, health
+//   2 = Read & Write  → store, batchStore
+//   3 = Admin         → delete, consolidate, migrate
 
 // ─── Memory Router ───────────────────────────────────────────────
 
 export const memoryRouter = {
-  /** Run migrations to set up the memories table + pgvector */
-  migrate: publicProcedure
-    .input(z.object({ projectId: z.string() }))
-    .handler(async ({ input }) => {
-      const memory = await getMemoryService(input.projectId);
-      await memory.migrate();
-      return { success: true };
+  /** POST /v1/memory/migrate — set up memories table + pgvector */
+  migrate: apiKeyProcedure(3)
+    .route({ method: "POST", path: "/migrate" })
+    .handler(async ({ context }) => {
+      return withService(
+        context.projectId,
+        (context as any).databaseUrl,
+        async (memory) => {
+          await memory.migrate();
+          return { success: true };
+        },
+      );
     }),
 
-  /** Store a single memory */
-  store: publicProcedure
+  /** POST /v1/memory — store a single memory */
+  store: apiKeyProcedure(2)
+    .route({ method: "POST", path: "/" })
     .input(
       z.object({
-        projectId: z.string(),
         namespace: z.string(),
         content: z.string(),
         tags: z.array(z.string()).optional(),
@@ -86,21 +91,25 @@ export const memoryRouter = {
         ttl: z.number().optional(),
       }),
     )
-    .handler(async ({ input }) => {
-      const memory = await getMemoryService(input.projectId);
-      const result = await memory.store(input.namespace, input.content, {
-        tags: input.tags,
-        metadata: input.metadata,
-        ttl: input.ttl,
-      });
-      return result;
+    .handler(async ({ input, context }) => {
+      return withService(
+        context.projectId,
+        (context as any).databaseUrl,
+        async (memory) => {
+          return memory.store(input.namespace, input.content, {
+            tags: input.tags,
+            metadata: input.metadata,
+            ttl: input.ttl,
+          });
+        },
+      );
     }),
 
-  /** Batch store memories */
-  batchStore: publicProcedure
+  /** POST /v1/memory/batch — batch store memories */
+  batchStore: apiKeyProcedure(2)
+    .route({ method: "POST", path: "/batch" })
     .input(
       z.object({
-        projectId: z.string(),
         namespace: z.string(),
         memories: z.array(
           z.object({
@@ -112,45 +121,63 @@ export const memoryRouter = {
         ),
       }),
     )
-    .handler(async ({ input }) => {
-      const memory = await getMemoryService(input.projectId);
-      const result = await memory.batchStore(input.namespace, input.memories);
-      return { count: result.length, memories: result };
+    .handler(async ({ input, context }) => {
+      return withService(
+        context.projectId,
+        (context as any).databaseUrl,
+        async (memory) => {
+          const result = await memory.batchStore(
+            input.namespace,
+            input.memories,
+          );
+          return { count: result.length, memories: result };
+        },
+      );
     }),
 
-  /** List memories in a namespace */
-  list: publicProcedure
+  /** GET /v1/memory — list memories in a namespace */
+  list: apiKeyProcedure(1)
+    .route({ method: "GET", path: "/" })
     .input(
       z.object({
-        projectId: z.string(),
         namespace: z.string(),
         limit: z.number().optional(),
       }),
     )
-    .handler(async ({ input }) => {
-      const memory = await getMemoryService(input.projectId);
-      return memory.list(input.namespace, input.limit);
+    .handler(async ({ input, context }) => {
+      return withService(
+        context.projectId,
+        (context as any).databaseUrl,
+        async (memory) => {
+          return memory.list(input.namespace, input.limit);
+        },
+      );
     }),
 
-  /** Delete a memory by ID */
-  delete: publicProcedure
+  /** DELETE /v1/memory/{memoryId} — delete a memory */
+  delete: apiKeyProcedure(3)
+    .route({ method: "DELETE", path: "/{memoryId}" })
     .input(
       z.object({
-        projectId: z.string(),
         memoryId: z.string().uuid(),
       }),
     )
-    .handler(async ({ input }) => {
-      const memory = await getMemoryService(input.projectId);
-      await memory.delete(input.memoryId);
-      return { deleted: true };
+    .handler(async ({ input, context }) => {
+      return withService(
+        context.projectId,
+        (context as any).databaseUrl,
+        async (memory) => {
+          await memory.delete(input.memoryId);
+          return { deleted: true };
+        },
+      );
     }),
 
-  /** Semantic recall with hybrid scoring */
-  recall: publicProcedure
+  /** POST /v1/memory/recall — semantic recall */
+  recall: apiKeyProcedure(1)
+    .route({ method: "POST", path: "/recall" })
     .input(
       z.object({
-        projectId: z.string(),
         namespace: z.string(),
         query: z.string(),
         limit: z.number().optional(),
@@ -158,39 +185,54 @@ export const memoryRouter = {
         minImportance: z.number().optional(),
       }),
     )
-    .handler(async ({ input }) => {
-      const memory = await getMemoryService(input.projectId);
-      return memory.recall(input.namespace, input.query, {
-        limit: input.limit,
-        tags: input.tags,
-        minImportance: input.minImportance,
-      });
+    .handler(async ({ input, context }) => {
+      return withService(
+        context.projectId,
+        (context as any).databaseUrl,
+        async (memory) => {
+          return memory.recall(input.namespace, input.query, {
+            limit: input.limit,
+            tags: input.tags,
+            minImportance: input.minImportance,
+          });
+        },
+      );
     }),
 
-  /** Trigger memory consolidation */
-  consolidate: publicProcedure
+  /** POST /v1/memory/consolidate — trigger consolidation */
+  consolidate: apiKeyProcedure(3)
+    .route({ method: "POST", path: "/consolidate" })
     .input(
       z.object({
-        projectId: z.string(),
         ageDays: z.number().optional(),
         limit: z.number().optional(),
       }),
     )
-    .handler(async ({ input }) => {
-      const memory = await getMemoryService(input.projectId);
-      const results = await memory.consolidate(input.ageDays, input.limit);
-      return {
-        message: "Consolidation complete",
-        consolidated: results.length,
-        results,
-      };
+    .handler(async ({ input, context }) => {
+      return withService(
+        context.projectId,
+        (context as any).databaseUrl,
+        async (memory) => {
+          const results = await memory.consolidate(input.ageDays, input.limit);
+          return {
+            message: "Consolidation complete",
+            consolidated: results.length,
+            results,
+          };
+        },
+      );
     }),
 
-  /** Health check for a project's memory DB */
-  health: publicProcedure
-    .input(z.object({ projectId: z.string() }))
-    .handler(async ({ input }) => {
-      const memory = await getMemoryService(input.projectId);
-      return memory.health();
+  /** GET /v1/memory/health — health check */
+  health: apiKeyProcedure(1)
+    .route({ method: "GET", path: "/health" })
+    .handler(async ({ context }) => {
+      return withService(
+        context.projectId,
+        (context as any).databaseUrl,
+        async (memory) => {
+          return memory.health();
+        },
+      );
     }),
 };
