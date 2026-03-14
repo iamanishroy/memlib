@@ -1,7 +1,6 @@
 "use client";
 
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { DashboardSidebar } from "@/components/sidebar/app-sidebar";
+import { TopNav } from "@/components/top-nav";
 
 export default function DashLayout({
   children,
@@ -9,14 +8,9 @@ export default function DashLayout({
   children: React.ReactNode;
 }) {
   return (
-    <SidebarProvider>
-      <div className="relative flex h-dvh w-full">
-        <DashboardSidebar />
-
-        <SidebarInset className="flex flex-col overflow-auto">
-          {children}
-        </SidebarInset>
-      </div>
-    </SidebarProvider>
+    <div className="flex h-dvh w-full flex-col">
+      <TopNav />
+      <main className="flex-1 overflow-auto">{children}</main>
+    </div>
   );
 }

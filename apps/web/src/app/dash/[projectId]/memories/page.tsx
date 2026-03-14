@@ -304,7 +304,7 @@ export default function MemoriesPage() {
 
   // ─── Render ────────────────────────────────────────────────────
   return (
-    <div className="flex flex-1 flex-col gap-0 p-4 h-[calc(100dvh-2rem)]">
+    <div className="flex flex-1 flex-col gap-0 p-4 h-[calc(100dvh-3.5rem)]">
       {/* Header */}
       <div className="mb-4 shrink-0 flex items-center gap-3">
         <div className="flex items-center justify-center rounded-lg bg-gradient-to-br from-violet-500/20 to-purple-600/20 p-2">
