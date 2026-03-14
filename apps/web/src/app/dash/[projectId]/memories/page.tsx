@@ -383,7 +383,7 @@ export default function MemoriesPage() {
       <div className="flex flex-1 min-h-0 rounded-xl border bg-card overflow-hidden">
         {/* ── Panel 1: Namespaces ─────────────────────────────── */}
         <div className="w-[220px] shrink-0 border-r flex flex-col">
-          <div className="px-3 py-2.5 border-b bg-muted/30 flex items-center justify-between">
+          <div className="px-3 h-10 border-b bg-muted/30 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Database className="size-3.5 text-muted-foreground" />
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -456,7 +456,7 @@ export default function MemoriesPage() {
 
         {/* ── Panel 2: Entities ───────────────────────────────── */}
         <div className="w-[220px] shrink-0 border-r flex flex-col">
-          <div className="px-3 py-2.5 border-b bg-muted/30 flex items-center justify-between">
+          <div className="px-3 h-10 border-b bg-muted/30 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <User className="size-3.5 text-muted-foreground" />
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -537,7 +537,7 @@ export default function MemoriesPage() {
 
         {/* ── Panel 3: Memories ───────────────────────────────── */}
         <div className="flex-1 flex flex-col min-w-0">
-          <div className="px-3 py-2.5 border-b bg-muted/30 flex items-center justify-between shrink-0">
+          <div className="px-3 h-10 border-b bg-muted/30 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
               <Brain className="size-3.5 text-muted-foreground" />
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">

@@ -207,7 +207,7 @@ export default function HomePage() {
         <div>
           <h1 className="text-xl font-bold">Home</h1>
           <p className="text-muted-foreground text-xs">
-            Recall memories and view analytics
+            Recall memories and project analytics
           </p>
         </div>
       </div>
@@ -247,7 +247,9 @@ export default function HomePage() {
                     <SelectItem key={ns.namespace} value={ns.namespace}>
                       <Database className="size-3.5 text-muted-foreground" />
                       {ns.namespace}
-                      <span className="text-muted-foreground">({ns.count})</span>
+                      <span className="text-muted-foreground">
+                        ({ns.count})
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -277,7 +279,9 @@ export default function HomePage() {
                     <SelectItem key={ent.entity} value={ent.entity}>
                       <User className="size-3.5 text-muted-foreground" />
                       {ent.entity}
-                      <span className="text-muted-foreground">({ent.count})</span>
+                      <span className="text-muted-foreground">
+                        ({ent.count})
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -321,15 +325,22 @@ export default function HomePage() {
               </div>
               <div className="divide-y max-h-[400px] overflow-y-auto">
                 {results.map((r) => (
-                  <div key={r.id} className="px-4 py-3 hover:bg-muted/30 transition-colors">
+                  <div
+                    key={r.id}
+                    className="px-4 py-3 hover:bg-muted/30 transition-colors"
+                  >
                     <p className="text-sm leading-relaxed">{r.content}</p>
                     <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Sparkles className="size-3" />
                         {(r.score * 100).toFixed(0)}% match
                       </span>
-                      <span>Similarity: {(r.similarity * 100).toFixed(0)}%</span>
-                      <span>Importance: {(r.importance * 100).toFixed(0)}%</span>
+                      <span>
+                        Similarity: {(r.similarity * 100).toFixed(0)}%
+                      </span>
+                      <span>
+                        Importance: {(r.importance * 100).toFixed(0)}%
+                      </span>
                       {r.tags && r.tags.length > 0 && (
                         <span className="flex items-center gap-1">
                           <Hash className="size-3" />
@@ -341,58 +352,61 @@ export default function HomePage() {
                 ))}
               </div>
             </div>
-          ) : !searching && (
-            <div className="border-t border-dashed">
-              <div className="px-4 py-2 text-xs text-muted-foreground font-medium">
-                Example results
-              </div>
-              <div className="divide-y opacity-50">
-                {[
-                  {
-                    content: "User prefers dark mode and uses TypeScript for all projects",
-                    score: 94,
-                    similarity: 92,
-                    importance: 80,
-                    tags: ["preference", "dev"],
-                  },
-                  {
-                    content: "Scheduled a meeting for next Friday to discuss the API redesign",
-                    score: 87,
-                    similarity: 85,
-                    importance: 70,
-                    tags: ["meeting", "api"],
-                  },
-                  {
-                    content: "Favorite framework is Next.js with App Router, prefers server components",
-                    score: 76,
-                    similarity: 78,
-                    importance: 60,
-                    tags: ["preference"],
-                  },
-                ].map((r, i) => (
-                  <div key={i} className="px-4 py-3">
-                    <p className="text-sm leading-relaxed">{r.content}</p>
-                    <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Sparkles className="size-3" />
-                        {r.score}% match
-                      </span>
-                      <span>Similarity: {r.similarity}%</span>
-                      <span>Importance: {r.importance}%</span>
-                      <span className="flex items-center gap-1">
-                        <Hash className="size-3" />
-                        {r.tags.join(", ")}
-                      </span>
+          ) : (
+            !searching && (
+              <div className="border-t border-dashed">
+                <div className="px-4 py-2 text-xs text-muted-foreground font-medium">
+                  Example results
+                </div>
+                <div className="divide-y opacity-50">
+                  {[
+                    {
+                      content:
+                        "User prefers dark mode and uses TypeScript for all projects",
+                      score: 94,
+                      similarity: 92,
+                      importance: 80,
+                      tags: ["preference", "dev"],
+                    },
+                    {
+                      content:
+                        "Scheduled a meeting for next Friday to discuss the API redesign",
+                      score: 87,
+                      similarity: 85,
+                      importance: 70,
+                      tags: ["meeting", "api"],
+                    },
+                    {
+                      content:
+                        "Favorite framework is Next.js with App Router, prefers server components",
+                      score: 76,
+                      similarity: 78,
+                      importance: 60,
+                      tags: ["preference"],
+                    },
+                  ].map((r, i) => (
+                    <div key={i} className="px-4 py-3">
+                      <p className="text-sm leading-relaxed">{r.content}</p>
+                      <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Sparkles className="size-3" />
+                          {r.score}% match
+                        </span>
+                        <span>Similarity: {r.similarity}%</span>
+                        <span>Importance: {r.importance}%</span>
+                        <span className="flex items-center gap-1">
+                          <Hash className="size-3" />
+                          {r.tags.join(", ")}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            )
           )}
         </CardContent>
       </Card>
-
-
 
       {/* ── Breakdown ─────────────────────────────────────────────── */}
       {stats && (stats.namespaces.length > 0 || stats.entities.length > 0) && (

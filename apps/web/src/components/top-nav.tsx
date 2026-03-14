@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 import { ProjectSwitcher } from "@/components/project-switcher";
+import { ModeToggle } from "@/components/mode-toggle";
 import UserMenu from "@/components/user-menu";
 import { Brain, Home, Key, Settings } from "lucide-react";
 import Link from "next/link";
@@ -81,7 +82,8 @@ export function TopNav() {
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* User Menu */}
+        {/* Theme Toggle + User Menu */}
+        <ModeToggle />
         <UserMenu />
       </div>
     </header>
