@@ -161,6 +161,46 @@ export async function GET(
       return Response.json(result.rows[0]);
     }
 
+    // ── Stats for dashboard ────────────────────────────────────
+    if (action === "stats") {
+      const result = await projectPool.query(`
+        SELECT
+          COUNT(*)::int AS total_memories,
+          COUNT(DISTINCT namespace)::int AS namespace_count,
+          COUNT(DISTINCT entity)::int AS entity_count,
+          ROUND(AVG(importance)::numeric, 2) AS avg_importance
+        FROM memories
+        WHERE archived = false
+      `);
+
+      const nsByCount = await projectPool.query(`
+        SELECT namespace, COUNT(*)::int AS count
+        FROM memories WHERE archived = false
+        GROUP BY namespace ORDER BY count DESC LIMIT 10
+      `);
+
+      const entByCount = await projectPool.query(`
+        SELECT entity, COUNT(*)::int AS count
+        FROM memories WHERE archived = false
+        GROUP BY entity ORDER BY count DESC LIMIT 10
+      `);
+
+      const recentActivity = await projectPool.query(`
+        SELECT DATE(created_at) AS date, COUNT(*)::int AS count
+        FROM memories WHERE archived = false
+          AND created_at > NOW() - INTERVAL '30 days'
+        GROUP BY DATE(created_at)
+        ORDER BY date DESC LIMIT 30
+      `);
+
+      return Response.json({
+        ...result.rows[0],
+        namespaces: nsByCount.rows,
+        entities: entByCount.rows,
+        recentActivity: recentActivity.rows,
+      });
+    }
+
     return Response.json({ error: "Invalid action" }, { status: 400 });
   } finally {
     await projectPool.end();
@@ -198,3 +238,73 @@ export async function DELETE(
     await projectPool.end();
   }
 }
+
+// ─── POST /api/projects/[id]/memories — recall ─────────────────────
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const session = await getSession();
+  if (!session) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const body = (await req.json()) as {
+    action: string;
+    namespace: string;
+    entity: string;
+    query: string;
+    limit?: number;
+  };
+
+  if (body.action !== "recall") {
+    return Response.json({ error: "Invalid action" }, { status: 400 });
+  }
+
+  if (!body.namespace || !body.entity || !body.query) {
+    return Response.json(
+      { error: "namespace, entity, and query are required" },
+      { status: 400 },
+    );
+  }
+
+  // Get project config for embedding + LLM
+  const [project] = await db
+    .select()
+    .from(schema.project)
+    .where(
+      and(eq(schema.project.id, id), eq(schema.project.userId, session.user.id)),
+    );
+
+  if (!project) {
+    return Response.json({ error: "Project not found" }, { status: 404 });
+  }
+
+  const { createMemoryService } = await import("@memz/memory");
+  const memoryService = createMemoryService({
+    database: { connectionString: project.databaseUrl },
+    embedding: {
+      provider: project.embeddingProvider as "gemini" | "openai",
+      apiKey: project.embeddingApiKey,
+    },
+    llm: {
+      provider: project.llmProvider as "gemini" | "openai" | "anthropic",
+      apiKey: project.llmApiKey,
+      model: project.llmModel ?? undefined,
+    },
+  });
+
+  try {
+    const results = await memoryService.recall(
+      body.namespace,
+      body.entity,
+      body.query,
+      { limit: body.limit ?? 10 },
+    );
+    return Response.json(results);
+  } finally {
+    await memoryService.close();
+  }
+}
+

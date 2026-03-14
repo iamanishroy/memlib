@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Logo } from "@/components/sidebar/logo";
+import { Logo } from "@/components/logo";
 import { ProjectSwitcher } from "@/components/project-switcher";
 import UserMenu from "@/components/user-menu";
 import { Brain, Home, Key, Settings } from "lucide-react";

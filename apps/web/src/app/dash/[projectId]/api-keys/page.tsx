@@ -200,14 +200,19 @@ export default function ApiKeysPage() {
 
   // ─── Render ──────────────────────────────────────────────────────
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
+    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">API Keys</h1>
-          <p className="text-muted-foreground text-sm">
-            Manage API keys for programmatic access to your project.
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-600/20 p-2">
+            <KeyRound className="size-5 text-amber-600 dark:text-amber-400" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold">API Keys</h1>
+            <p className="text-muted-foreground text-xs">
+              Manage API keys for programmatic access to your project
+            </p>
+          </div>
         </div>
 
         {/* ─── Create API Key Dialog ────────────────────────────── */}

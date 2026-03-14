@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Logo } from "@/components/sidebar/logo";
+import { Logo } from "@/components/logo";
 
 export default function Home() {
   return (

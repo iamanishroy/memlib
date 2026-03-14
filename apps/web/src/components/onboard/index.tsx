@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { IconChevronRight } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
-import { Logo } from "@/components/sidebar/logo";
+import { Logo } from "@/components/logo";
 import { CircularProgress, StepIndicator } from "./progress";
 import { StepProject } from "./step-project";
 import { StepDatabase } from "./step-database";

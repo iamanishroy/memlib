@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { type JSX, type SVGProps } from "react";
 
-import { Logo } from "@/components/sidebar/logo";
+import { Logo } from "@/components/logo";
 import { authClient } from "@/lib/auth-client";
 
 const GoogleIcon = (
