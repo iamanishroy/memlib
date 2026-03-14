@@ -85,6 +85,7 @@ export const memoryRouter = {
     .input(
       z.object({
         namespace: z.string(),
+        entity: z.string(),
         content: z.string(),
         tags: z.array(z.string()).optional(),
         metadata: z.record(z.string(), z.unknown()).optional(),
@@ -96,7 +97,7 @@ export const memoryRouter = {
         context.projectId,
         (context as any).databaseUrl,
         async (memory) => {
-          return memory.store(input.namespace, input.content, {
+          return memory.store(input.namespace, input.entity, input.content, {
             tags: input.tags,
             metadata: input.metadata,
             ttl: input.ttl,
@@ -111,6 +112,7 @@ export const memoryRouter = {
     .input(
       z.object({
         namespace: z.string(),
+        entity: z.string(),
         memories: z.array(
           z.object({
             content: z.string(),
@@ -128,6 +130,7 @@ export const memoryRouter = {
         async (memory) => {
           const result = await memory.batchStore(
             input.namespace,
+            input.entity,
             input.memories,
           );
           return { count: result.length, memories: result };
@@ -141,6 +144,7 @@ export const memoryRouter = {
     .input(
       z.object({
         namespace: z.string(),
+        entity: z.string().optional(),
         limit: z.number().optional(),
       }),
     )
@@ -149,7 +153,7 @@ export const memoryRouter = {
         context.projectId,
         (context as any).databaseUrl,
         async (memory) => {
-          return memory.list(input.namespace, input.limit);
+          return memory.list(input.namespace, input.entity, input.limit);
         },
       );
     }),
@@ -179,6 +183,7 @@ export const memoryRouter = {
     .input(
       z.object({
         namespace: z.string(),
+        entity: z.string(),
         query: z.string(),
         limit: z.number().optional(),
         tags: z.array(z.string()).optional(),
@@ -190,7 +195,7 @@ export const memoryRouter = {
         context.projectId,
         (context as any).databaseUrl,
         async (memory) => {
-          return memory.recall(input.namespace, input.query, {
+          return memory.recall(input.namespace, input.entity, input.query, {
             limit: input.limit,
             tags: input.tags,
             minImportance: input.minImportance,

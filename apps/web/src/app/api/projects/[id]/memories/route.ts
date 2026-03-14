@@ -74,38 +74,20 @@ export async function GET(
         );
       }
 
-      // Check if entity column exists
-      const colCheck = await projectPool.query(`
-        SELECT column_name FROM information_schema.columns
-        WHERE table_name = 'memories' AND column_name = 'entity'
-      `);
-      const hasEntity = colCheck.rows.length > 0;
-
-      if (hasEntity) {
-        const result = await projectPool.query(
-          `
-          SELECT COALESCE(entity, 'default') as entity, COUNT(*)::int AS count
-          FROM memories
-          WHERE namespace = $1 AND archived = false
-          GROUP BY entity
-          ORDER BY entity
-          `,
-          [namespace],
-        );
-        return Response.json(result.rows);
-      } else {
-        // No entity column yet — return a single "default" entity
-        const result = await projectPool.query(
-          `SELECT COUNT(*)::int AS count FROM memories WHERE namespace = $1 AND archived = false`,
-          [namespace],
-        );
-        return Response.json([
-          { entity: "default", count: result.rows[0]?.count ?? 0 },
-        ]);
-      }
+      const result = await projectPool.query(
+        `
+        SELECT entity, COUNT(*)::int AS count
+        FROM memories
+        WHERE namespace = $1 AND archived = false
+        GROUP BY entity
+        ORDER BY entity
+        `,
+        [namespace],
+      );
+      return Response.json(result.rows);
     }
 
-    // ── List memories for a namespace (+ optional entity) ──────
+    // ── List memories for a namespace + entity ─────────────────
     if (action === "list") {
       const namespace = url.searchParams.get("namespace");
       if (!namespace) {
@@ -122,19 +104,12 @@ export async function GET(
       );
       const offset = parseInt(url.searchParams.get("offset") ?? "0", 10);
 
-      // Check if entity column exists
-      const colCheck = await projectPool.query(`
-        SELECT column_name FROM information_schema.columns
-        WHERE table_name = 'memories' AND column_name = 'entity'
-      `);
-      const hasEntity = colCheck.rows.length > 0;
-
       let whereClause = "namespace = $1 AND archived = false";
       const queryParams: (string | number)[] = [namespace];
 
-      if (hasEntity && entity && entity !== "default") {
-        whereClause += " AND entity = $" + (queryParams.length + 1);
+      if (entity) {
         queryParams.push(entity);
+        whereClause += ` AND entity = $${queryParams.length}`;
       }
 
       const countParams = [...queryParams];
@@ -142,7 +117,7 @@ export async function GET(
 
       const result = await projectPool.query(
         `
-        SELECT id, namespace, content, importance, tags, memory_type,
+        SELECT id, namespace, entity, content, importance, tags, memory_type,
                archived, expires_at, created_at, last_accessed, metadata
         FROM memories
         WHERE ${whereClause}
@@ -172,7 +147,7 @@ export async function GET(
 
       const result = await projectPool.query(
         `
-        SELECT id, namespace, content, importance, tags, memory_type,
+        SELECT id, namespace, entity, content, importance, tags, memory_type,
                archived, expires_at, created_at, last_accessed, metadata
         FROM memories WHERE id = $1
         `,

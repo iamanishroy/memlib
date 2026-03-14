@@ -39,7 +39,8 @@ describe("Memory Service", () => {
     it("should store a memory with LLM-scored importance", async () => {
       const mockMemory = {
         id: "test-uuid",
-        namespace: "user:alice",
+        namespace: "agent-1",
+        entity: "user-alice",
         content: "I like TypeScript",
         embedding: new Array(1536).fill(0.1),
         importance: 0.7,
@@ -62,7 +63,12 @@ describe("Memory Service", () => {
 
       mockDb.insert.mockReturnValue(mockInsert);
 
-      const result = await storeMemory(deps, "user:alice", "I like TypeScript");
+      const result = await storeMemory(
+        deps,
+        "agent-1",
+        "user-alice",
+        "I like TypeScript",
+      );
 
       expect(result).toEqual(mockMemory);
       expect(result.importance).toBe(0.7);
@@ -72,7 +78,8 @@ describe("Memory Service", () => {
     it("should return existing memory if duplicate detected", async () => {
       const existingMemory = {
         id: "existing-uuid",
-        namespace: "user:alice",
+        namespace: "agent-1",
+        entity: "user-alice",
         content: "I like TypeScript",
         embedding: new Array(1536).fill(0.1),
         importance: 0.7,
@@ -85,7 +92,12 @@ describe("Memory Service", () => {
 
       mockPool.query.mockResolvedValue({ rows: [existingMemory] });
 
-      const result = await storeMemory(deps, "user:alice", "I like TypeScript");
+      const result = await storeMemory(
+        deps,
+        "agent-1",
+        "user-alice",
+        "I like TypeScript",
+      );
 
       expect((result as any).deduplicated).toBe(true);
       expect(mockDb.insert).not.toHaveBeenCalled();
@@ -94,7 +106,8 @@ describe("Memory Service", () => {
     it("should store a memory with tags and TTL", async () => {
       const mockMemory = {
         id: "test-uuid-2",
-        namespace: "user:alice",
+        namespace: "agent-1",
+        entity: "user-alice",
         content: "I prefer dark mode",
         embedding: new Array(1536).fill(0.1),
         importance: 0.7,
@@ -119,7 +132,8 @@ describe("Memory Service", () => {
 
       const result = await storeMemory(
         deps,
-        "user:alice",
+        "agent-1",
+        "user-alice",
         "I prefer dark mode",
         {
           tags: ["preference", "ui"],
@@ -138,7 +152,8 @@ describe("Memory Service", () => {
       const mockResults = [
         {
           id: "1",
-          namespace: "user:alice",
+          namespace: "agent-1",
+          entity: "user-alice",
           content: "Memory 1",
           embedding: new Array(1536).fill(0.1),
           importance: 0.7,
@@ -146,7 +161,8 @@ describe("Memory Service", () => {
         },
         {
           id: "2",
-          namespace: "user:alice",
+          namespace: "agent-1",
+          entity: "user-alice",
           content: "Memory 2",
           embedding: new Array(1536).fill(0.1),
           importance: 0.7,
@@ -162,7 +178,7 @@ describe("Memory Service", () => {
 
       mockDb.insert.mockReturnValue(mockInsert);
 
-      const result = await storeMemories(deps, "user:alice", [
+      const result = await storeMemories(deps, "agent-1", "user-alice", [
         { content: "Memory 1", tags: ["a"] },
         { content: "Memory 2", tags: ["b"] },
       ]);
@@ -177,7 +193,8 @@ describe("Memory Service", () => {
       const mockMemories = [
         {
           id: "1",
-          namespace: "user:alice",
+          namespace: "agent-1",
+          entity: "user-alice",
           content: "Memory 1",
           embedding: null,
           importance: 0.5,
@@ -193,16 +210,16 @@ describe("Memory Service", () => {
 
       mockDb.query.memories.findMany.mockResolvedValue(mockMemories);
 
-      const result = await getMemories(deps, "user:alice");
+      const result = await getMemories(deps, "agent-1");
 
       expect(result).toEqual(mockMemories);
       expect(result).toHaveLength(1);
     });
 
-    it("should respect the limit parameter", async () => {
+    it("should filter by entity when provided", async () => {
       mockDb.query.memories.findMany.mockResolvedValue([]);
 
-      await getMemories(deps, "user:alice", 10);
+      await getMemories(deps, "agent-1", "user-alice", 10);
 
       expect(mockDb.query.memories.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ limit: 10 }),

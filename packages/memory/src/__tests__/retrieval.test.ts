@@ -34,7 +34,12 @@ describe("Retrieval Service", () => {
       })
       .mockResolvedValueOnce({ rows: [] }); // last_accessed update
 
-    const result = await retrieveMemories(deps, "user:alice", "test query");
+    const result = await retrieveMemories(
+      deps,
+      "agent-1",
+      "user-alice",
+      "test query",
+    );
 
     expect(result).toHaveLength(1);
     expect(result[0]!.score).toBeGreaterThan(0);
@@ -44,7 +49,7 @@ describe("Retrieval Service", () => {
   it("should pass tag filter to SQL", async () => {
     mockPool.query.mockResolvedValue({ rows: [] });
 
-    await retrieveMemories(deps, "user:alice", "test", {
+    await retrieveMemories(deps, "agent-1", "user-alice", "test", {
       tags: ["preference"],
       limit: 5,
     });
@@ -57,7 +62,7 @@ describe("Retrieval Service", () => {
   it("should pass minImportance filter to SQL", async () => {
     mockPool.query.mockResolvedValue({ rows: [] });
 
-    await retrieveMemories(deps, "user:alice", "test", {
+    await retrieveMemories(deps, "agent-1", "user-alice", "test", {
       minImportance: 0.7,
       limit: 5,
     });
@@ -84,7 +89,12 @@ describe("Retrieval Service", () => {
       })
       .mockResolvedValue({ rows: [] });
 
-    const results = await retrieveMemories(deps, "user:alice", "test query");
+    const results = await retrieveMemories(
+      deps,
+      "agent-1",
+      "user-alice",
+      "test query",
+    );
 
     expect(results).toHaveLength(1);
     const updateCall = mockPool.query.mock.calls.find(
@@ -98,7 +108,7 @@ describe("Retrieval Service", () => {
   it("should accept numeric limit for backwards compat", async () => {
     mockPool.query.mockResolvedValue({ rows: [] });
 
-    await retrieveMemories(deps, "user:alice", "test", 5);
+    await retrieveMemories(deps, "agent-1", "user-alice", "test", 5);
 
     const callArgs = mockPool.query.mock.calls[0]!;
     const params = callArgs[1] as any[];

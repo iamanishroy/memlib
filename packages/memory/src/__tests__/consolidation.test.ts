@@ -34,14 +34,16 @@ describe("Consolidation Service", () => {
       rows: [
         {
           id: "1",
-          namespace: "user:alice",
+          namespace: "agent-1",
+          entity: "user-alice",
           content: "Old memory 1",
           created_at: new Date("2024-01-01"),
           importance: 0.5,
         },
         {
           id: "2",
-          namespace: "user:alice",
+          namespace: "agent-1",
+          entity: "user-alice",
           content: "Old memory 2",
           created_at: new Date("2024-01-02"),
           importance: 0.8,
@@ -55,7 +57,8 @@ describe("Consolidation Service", () => {
     const result = await consolidateMemories(deps, 7, 50);
 
     expect(result).toHaveLength(1);
-    expect(result[0]!.namespace).toBe("user:alice");
+    expect(result[0]!.namespace).toBe("agent-1");
+    expect(result[0]!.entity).toBe("user-alice");
     expect(result[0]!.originalCount).toBe(2);
     expect(result[0]!.summary).toBeDefined();
     expect(result[0]!.archivedIds).toEqual(["1", "2"]);
@@ -67,7 +70,8 @@ describe("Consolidation Service", () => {
       rows: [
         {
           id: "1",
-          namespace: "user:bob",
+          namespace: "agent-1",
+          entity: "user-bob",
           content: "Only memory",
           created_at: new Date("2024-01-01"),
           importance: 0.5,

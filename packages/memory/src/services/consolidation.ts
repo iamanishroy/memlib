@@ -2,6 +2,7 @@ import type { MemoryDeps } from "../config";
 
 export interface StaleMemoryGroup {
   namespace: string;
+  entity: string;
   memories: {
     id: string;
     content: string;
@@ -12,6 +13,7 @@ export interface StaleMemoryGroup {
 
 export interface ConsolidationResult {
   namespace: string;
+  entity: string;
   originalCount: number;
   summary: string;
   archivedIds: string[];
@@ -26,7 +28,7 @@ Memories:
 
 /**
  * Finds non-archived memories older than `ageDays`, summarizes each
- * namespace's group via LLM, stores a condensed memory, and
+ * (namespace, entity) group via LLM, stores a condensed memory, and
  * archives the originals.
  */
 export async function consolidateMemories(
@@ -36,12 +38,12 @@ export async function consolidateMemories(
 ): Promise<ConsolidationResult[]> {
   const result = await deps.pool.query(
     `
-    SELECT id, namespace, content, created_at, importance
+    SELECT id, namespace, entity, content, created_at, importance
     FROM memories
     WHERE created_at < NOW() - make_interval(days => $1)
       AND archived = false
       AND (expires_at IS NULL OR expires_at > NOW())
-    ORDER BY namespace, created_at ASC
+    ORDER BY namespace, entity, created_at ASC
     LIMIT $2
     `,
     [ageDays, limit],
@@ -49,13 +51,16 @@ export async function consolidateMemories(
 
   if (result.rows.length === 0) return [];
 
+  // Group by (namespace, entity)
   const groups = new Map<string, StaleMemoryGroup>();
   for (const row of result.rows) {
     const ns = row.namespace as string;
-    if (!groups.has(ns)) {
-      groups.set(ns, { namespace: ns, memories: [] });
+    const ent = row.entity as string;
+    const key = `${ns}::${ent}`;
+    if (!groups.has(key)) {
+      groups.set(key, { namespace: ns, entity: ent, memories: [] });
     }
-    groups.get(ns)!.memories.push({
+    groups.get(key)!.memories.push({
       id: row.id,
       content: row.content,
       createdAt: row.created_at,
@@ -81,11 +86,12 @@ export async function consolidateMemories(
 
       await deps.pool.query(
         `
-        INSERT INTO memories (namespace, content, embedding, importance, metadata)
-        VALUES ($1, $2, $3::vector, $4, $5)
+        INSERT INTO memories (namespace, entity, content, embedding, importance, metadata)
+        VALUES ($1, $2, $3, $4::vector, $5, $6)
         `,
         [
           group.namespace,
+          group.entity,
           summary,
           `[${embedding.join(",")}]`,
           maxImportance,
@@ -105,13 +111,14 @@ export async function consolidateMemories(
 
       results.push({
         namespace: group.namespace,
+        entity: group.entity,
         originalCount: group.memories.length,
         summary,
         archivedIds: ids,
       });
     } catch (error) {
       console.warn(
-        `Consolidation failed for namespace ${group.namespace}:`,
+        `Consolidation failed for ${group.namespace}/${group.entity}:`,
         error,
       );
     }

@@ -22,10 +22,13 @@ export interface RecallOptions {
 /**
  * Retrieve memories using hybrid scoring:
  *   score = 0.6 * similarity + 0.2 * recency + 0.2 * importance
+ *
+ * Scoped to a specific namespace + entity.
  */
 export async function retrieveMemories(
   deps: Pick<MemoryDeps, "pool" | "generateEmbedding">,
   namespace: string,
+  entity: string,
   query: string,
   options: RecallOptions | number = {},
 ): Promise<RetrievedMemory[]> {
@@ -37,10 +40,11 @@ export async function retrieveMemories(
 
   const conditions = [
     "namespace = $2",
+    "entity = $3",
     "archived = false",
     "(expires_at IS NULL OR expires_at > NOW())",
   ];
-  const params: any[] = [`[${embedding.join(",")}]`, namespace];
+  const params: any[] = [`[${embedding.join(",")}]`, namespace, entity];
 
   if (tags && tags.length > 0) {
     params.push(tags);

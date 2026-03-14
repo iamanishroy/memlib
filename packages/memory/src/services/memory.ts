@@ -1,31 +1,33 @@
 import type { MemoryDeps } from "../config";
 import { memories, type Memory } from "../db/schema";
 import { scoreImportance } from "./importance";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 const DEDUP_SIMILARITY_THRESHOLD = 0.95;
 
 /**
- * Check if a very similar memory already exists in this namespace.
+ * Check if a very similar memory already exists for this namespace + entity.
  */
 async function findDuplicate(
   deps: Pick<MemoryDeps, "pool">,
   namespace: string,
+  entity: string,
   embedding: number[],
 ): Promise<Memory | null> {
   const result = await deps.pool.query(
     `
-    SELECT id, namespace, content, embedding, importance, tags, memory_type,
+    SELECT id, namespace, entity, content, embedding, importance, tags, memory_type,
            archived, expires_at, created_at, last_accessed, metadata,
            1 - (embedding <=> $1::vector) AS similarity
     FROM memories
     WHERE namespace = $2
+      AND entity = $3
       AND archived = false
-      AND 1 - (embedding <=> $1::vector) > $3
+      AND 1 - (embedding <=> $1::vector) > $4
     ORDER BY embedding <=> $1::vector
     LIMIT 1
     `,
-    [`[${embedding.join(",")}]`, namespace, DEDUP_SIMILARITY_THRESHOLD],
+    [`[${embedding.join(",")}]`, namespace, entity, DEDUP_SIMILARITY_THRESHOLD],
   );
 
   return result.rows.length > 0 ? result.rows[0] : null;
@@ -41,6 +43,7 @@ export interface StoreMemoryOptions {
 export async function storeMemory(
   deps: MemoryDeps,
   namespace: string,
+  entity: string,
   content: string,
   options: StoreMemoryOptions = {},
 ): Promise<Memory & { deduplicated?: boolean }> {
@@ -51,7 +54,7 @@ export async function storeMemory(
     scoreImportance(deps, content),
   ]);
 
-  const existing = await findDuplicate(deps, namespace, embedding);
+  const existing = await findDuplicate(deps, namespace, entity, embedding);
   if (existing) {
     return { ...existing, deduplicated: true } as Memory & {
       deduplicated: boolean;
@@ -64,6 +67,7 @@ export async function storeMemory(
     .insert(memories)
     .values({
       namespace,
+      entity,
       content,
       embedding,
       importance,
@@ -81,11 +85,12 @@ export async function storeMemory(
 }
 
 /**
- * Batch store multiple memories in a single namespace.
+ * Batch store multiple memories for a namespace + entity.
  */
 export async function storeMemories(
   deps: MemoryDeps,
   namespace: string,
+  entity: string,
   items: {
     content: string;
     tags?: string[];
@@ -101,6 +106,7 @@ export async function storeMemories(
       ]);
       return {
         namespace,
+        entity,
         content: item.content,
         embedding,
         importance,
@@ -120,8 +126,20 @@ export async function storeMemories(
 export async function getMemories(
   deps: MemoryDeps,
   namespace: string,
+  entity?: string,
   limit = 50,
 ): Promise<Memory[]> {
+  if (entity) {
+    return deps.db.query.memories.findMany({
+      where: and(
+        eq(memories.namespace, namespace),
+        eq(memories.entity, entity),
+      ),
+      limit,
+      orderBy: (memories, { desc }) => [desc(memories.createdAt)],
+    });
+  }
+
   return deps.db.query.memories.findMany({
     where: eq(memories.namespace, namespace),
     limit,

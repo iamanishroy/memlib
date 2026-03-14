@@ -34,6 +34,7 @@ export const memories = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     namespace: text("namespace").notNull(),
+    entity: text("entity").notNull().default("default"),
     content: text("content").notNull(),
     embedding: vector("embedding", { dimensions: 1536 }),
     importance: real("importance").default(0.5),
@@ -46,9 +47,9 @@ export const memories = pgTable(
     metadata: jsonb("metadata").$type<Record<string, unknown>>(),
   },
   (table) => [
-    index("idx_memories_ns_archived_created").on(
+    index("idx_memories_ns_entity_created").on(
       table.namespace,
-      table.archived,
+      table.entity,
       table.createdAt,
     ),
   ],

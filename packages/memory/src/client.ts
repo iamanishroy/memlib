@@ -37,6 +37,7 @@ export interface MemoryService {
   /** Store a single memory */
   store(
     namespace: string,
+    entity: string,
     content: string,
     options?: StoreMemoryOptions,
   ): Promise<SafeMemory & { deduplicated?: boolean }>;
@@ -44,6 +45,7 @@ export interface MemoryService {
   /** Batch store memories */
   batchStore(
     namespace: string,
+    entity: string,
     items: {
       content: string;
       tags?: string[];
@@ -52,15 +54,16 @@ export interface MemoryService {
     }[],
   ): Promise<SafeMemory[]>;
 
-  /** List memories in a namespace */
-  list(namespace: string, limit?: number): Promise<SafeMemory[]>;
+  /** List memories in a namespace, optionally filtered by entity */
+  list(namespace: string, entity?: string, limit?: number): Promise<SafeMemory[]>;
 
   /** Delete a memory by ID */
   delete(id: string): Promise<void>;
 
-  /** Semantic recall with hybrid scoring */
+  /** Semantic recall with hybrid scoring, scoped to namespace + entity */
   recall(
     namespace: string,
+    entity: string,
     query: string,
     options?: RecallOptions | number,
   ): Promise<RetrievedMemory[]>;
@@ -95,25 +98,25 @@ export function createMemoryService(config: MemoryConfig): MemoryService {
   const deps: MemoryDeps = { pool, db, generateEmbedding, generateText };
 
   return {
-    store: async (namespace, content, options) => {
-      const result = await _storeMemory(deps, namespace, content, options);
+    store: async (namespace, entity, content, options) => {
+      const result = await _storeMemory(deps, namespace, entity, content, options);
       return stripEmbedding(result);
     },
 
-    batchStore: async (namespace, items) => {
-      const result = await _storeMemories(deps, namespace, items);
+    batchStore: async (namespace, entity, items) => {
+      const result = await _storeMemories(deps, namespace, entity, items);
       return result.map(stripEmbedding);
     },
 
-    list: async (namespace, limit) => {
-      const result = await _getMemories(deps, namespace, limit);
+    list: async (namespace, entity, limit) => {
+      const result = await _getMemories(deps, namespace, entity, limit);
       return result.map(stripEmbedding);
     },
 
     delete: (id) => _deleteMemory(deps, id),
 
-    recall: (namespace, query, options) =>
-      _retrieveMemories(deps, namespace, query, options),
+    recall: (namespace, entity, query, options) =>
+      _retrieveMemories(deps, namespace, entity, query, options),
 
     consolidate: (ageDays, limit) => _consolidateMemories(deps, ageDays, limit),
 
@@ -126,6 +129,7 @@ export function createMemoryService(config: MemoryConfig): MemoryService {
         CREATE TABLE IF NOT EXISTS memories (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           namespace TEXT NOT NULL,
+          entity TEXT NOT NULL DEFAULT 'default',
           content TEXT NOT NULL,
           embedding vector(${config.embedding.dimensions ?? 1536}),
           importance REAL DEFAULT 0.5,
@@ -139,17 +143,16 @@ export function createMemoryService(config: MemoryConfig): MemoryService {
         )
       `);
 
-      // Composite index for namespace + archived + created_at (covers
-      // listing, grouping, counting, and pagination queries)
+      // Primary access pattern: namespace + entity + recent (partial, skip archived)
       await pool.query(`
-        CREATE INDEX IF NOT EXISTS idx_memories_ns_archived_created
-        ON memories (namespace, archived, created_at DESC)
+        CREATE INDEX IF NOT EXISTS idx_memories_ns_entity_created
+        ON memories (namespace, entity, created_at DESC)
       `);
 
-      // Drop the old single-column index if it exists (redundant —
-      // namespace is the leading column of the composite index above)
+      // Consolidation: find old unarchived memories
       await pool.query(`
-        DROP INDEX IF EXISTS idx_memories_namespace
+        CREATE INDEX IF NOT EXISTS idx_memories_archived_created
+        ON memories (archived, created_at)
       `);
 
       console.log("✅ Memory tables migrated successfully");
