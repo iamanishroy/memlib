@@ -139,10 +139,17 @@ export function createMemoryService(config: MemoryConfig): MemoryService {
         )
       `);
 
-      // Create index on namespace
+      // Composite index for namespace + archived + created_at (covers
+      // listing, grouping, counting, and pagination queries)
       await pool.query(`
-        CREATE INDEX IF NOT EXISTS idx_memories_namespace
-        ON memories (namespace)
+        CREATE INDEX IF NOT EXISTS idx_memories_ns_archived_created
+        ON memories (namespace, archived, created_at DESC)
+      `);
+
+      // Drop the old single-column index if it exists (redundant —
+      // namespace is the leading column of the composite index above)
+      await pool.query(`
+        DROP INDEX IF EXISTS idx_memories_namespace
       `);
 
       console.log("✅ Memory tables migrated successfully");

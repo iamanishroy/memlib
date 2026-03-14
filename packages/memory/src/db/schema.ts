@@ -45,7 +45,13 @@ export const memories = pgTable(
     lastAccessed: timestamp("last_accessed").defaultNow(),
     metadata: jsonb("metadata").$type<Record<string, unknown>>(),
   },
-  (table) => [index("idx_memories_namespace").on(table.namespace)],
+  (table) => [
+    index("idx_memories_ns_archived_created").on(
+      table.namespace,
+      table.archived,
+      table.createdAt,
+    ),
+  ],
 );
 
 // ─── Types ────────────────────────────────────────────────────────
