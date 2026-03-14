@@ -45,7 +45,7 @@ export function StatsBar({
               {loading ? (
                 <Skeleton className="h-8 w-16 mt-2" />
               ) : (
-                <div className="mt-1 tabular-nums text-2xl font-semibold text-primary">
+                <div className="mt-1 tabular-nums text-2xl font-semibold text-foreground">
                   {item.value.toLocaleString()}
                 </div>
               )}

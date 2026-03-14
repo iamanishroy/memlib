@@ -27,9 +27,6 @@
     "paths": {
       "@/*": [
         "./src/*"
-      ],
-      "@memz/ui/*": [
-        "../../packages/ui/src/*"
       ]
     },
     "types": [

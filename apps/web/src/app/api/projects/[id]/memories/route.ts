@@ -202,6 +202,33 @@ export async function GET(
     }
 
     return Response.json({ error: "Invalid action" }, { status: 400 });
+  } catch (err: unknown) {
+    // Handle missing "memories" table (e.g. fresh project DB with no data yet)
+    // PostgreSQL error code 42P01 = "undefined_table"
+    const pgCode = (err as { code?: string })?.code;
+    if (pgCode === "42P01") {
+      if (action === "namespaces" || action === "entities") {
+        return Response.json([]);
+      }
+      if (action === "list") {
+        return Response.json({ memories: [], total: 0 });
+      }
+      if (action === "stats") {
+        return Response.json({
+          total_memories: 0,
+          namespace_count: 0,
+          entity_count: 0,
+          avg_importance: 0,
+          namespaces: [],
+          entities: [],
+          recentActivity: [],
+        });
+      }
+      if (action === "get") {
+        return Response.json({ error: "Memory not found" }, { status: 404 });
+      }
+    }
+    throw err;
   } finally {
     await projectPool.end();
   }
@@ -218,11 +245,7 @@ export async function DELETE(
   }
 
   const { id } = await params;
-  const body = (await req.json()) as { memoryId: string };
-
-  if (!body.memoryId) {
-    return Response.json({ error: "memoryId is required" }, { status: 400 });
-  }
+  const body = (await req.json()) as { memoryId?: string; action?: string };
 
   const projectPool = await getProjectPool(id, session.user.id);
   if (!projectPool) {
@@ -230,6 +253,16 @@ export async function DELETE(
   }
 
   try {
+    // Purge all memories
+    if (body.action === "purge") {
+      const result = await projectPool.query(`DELETE FROM memories`);
+      return Response.json({ ok: true, deleted: result.rowCount });
+    }
+
+    // Delete single memory
+    if (!body.memoryId) {
+      return Response.json({ error: "memoryId is required" }, { status: 400 });
+    }
     await projectPool.query(`DELETE FROM memories WHERE id = $1`, [
       body.memoryId,
     ]);

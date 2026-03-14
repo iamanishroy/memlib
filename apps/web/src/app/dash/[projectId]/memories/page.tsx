@@ -304,9 +304,9 @@ export default function MemoriesPage() {
 
   // ─── Render ────────────────────────────────────────────────────
   return (
-    <div className="flex flex-1 flex-col p-4 md:p-6 h-[calc(100dvh-3.5rem)]">
+    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 h-full overflow-hidden">
       {/* Header */}
-      <div className="mb-4 shrink-0 flex items-center gap-3">
+      <div className="shrink-0 flex items-center gap-3">
         <div className="flex items-center justify-center rounded-lg bg-gradient-to-br from-violet-500/20 to-purple-600/20 p-2">
           <Brain className="size-5 text-violet-600 dark:text-violet-400" />
         </div>

@@ -82,7 +82,15 @@ export function TopNav() {
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Theme Toggle + User Menu */}
+        {/* Docs + Theme Toggle + User Menu */}
+        <a
+          href="/docs"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Docs
+        </a>
         <ModeToggle />
         <UserMenu />
       </div>

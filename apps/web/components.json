@@ -15,8 +15,8 @@
   "menuAccent": "subtle",
   "aliases": {
     "components": "@/components",
-    "utils": "@memz/ui/lib/utils",
-    "ui": "@memz/ui/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
     "lib": "@/lib",
     "hooks": "@/hooks"
   },

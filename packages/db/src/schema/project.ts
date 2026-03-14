@@ -7,17 +7,18 @@ export const project = pgTable(
   {
     id: text("id").primaryKey(),
     name: text("name").notNull(),
-    userId: text("user_id")
+    description: text("description"),
+    userId: text("userId")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    databaseUrl: text("database_url").notNull(),
-    embeddingProvider: text("embedding_provider").notNull(), // 'gemini' | 'openai'
-    embeddingApiKey: text("embedding_api_key").notNull(),
-    llmProvider: text("llm_provider").notNull(), // 'openai' | 'gemini' | 'anthropic'
-    llmApiKey: text("llm_api_key").notNull(),
-    llmModel: text("llm_model").notNull(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
+    databaseUrl: text("databaseUrl").notNull(),
+    embeddingProvider: text("embeddingProvider").notNull(),
+    embeddingApiKey: text("embeddingApiKey").notNull(),
+    llmProvider: text("llmProvider").notNull(),
+    llmApiKey: text("llmApiKey").notNull(),
+    llmModel: text("llmModel").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
       .defaultNow()
       .$onUpdate(() => new Date())
       .notNull(),
