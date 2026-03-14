@@ -14,14 +14,11 @@ import {
   Brain,
   Home,
   Key,
-  LinkIcon,
   Palette,
   Search,
   Settings,
   Sparkles,
   TrendingUp,
-  Webhook,
-  Zap,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { Logo } from "@/components/sidebar/logo";
@@ -55,27 +52,10 @@ function useDashboardRoutes(): Route[] {
       link: `${base}/recall`,
     },
     {
-      id: "integrations",
-      title: "Integrations",
-      icon: <Zap className="size-4" />,
-      link: `${base}/integrations`,
-      subs: [
-        {
-          title: "API Keys",
-          link: `${base}/integrations/api-keys`,
-          icon: <Key className="size-4" />,
-        },
-        {
-          title: "Webhooks",
-          link: `${base}/integrations/webhooks`,
-          icon: <Webhook className="size-4" />,
-        },
-        {
-          title: "Connected Apps",
-          link: `${base}/integrations/apps`,
-          icon: <LinkIcon className="size-4" />,
-        },
-      ],
+      id: "api-keys",
+      title: "API Keys",
+      icon: <Key className="size-4" />,
+      link: `${base}/api-keys`,
     },
     {
       id: "insights",

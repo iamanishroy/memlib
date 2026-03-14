@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useProject } from "../../layout";
+import { useProject } from "../layout";
 import { authClient } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 
