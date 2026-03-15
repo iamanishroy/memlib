@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
@@ -9,7 +9,9 @@ import { cn } from "@/lib/utils";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { StatsBar } from "@/components/stats-bar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -22,6 +24,8 @@ import {
   Hash,
   Home,
   Loader2,
+  Plus,
+  RefreshCw,
   Search,
   Sparkles,
   User,
@@ -50,14 +54,7 @@ interface RecallResult {
   score: number;
 }
 
-interface Stats {
-  total_memories: number;
-  namespace_count: number;
-  entity_count: number;
-  avg_importance: number;
-  namespaces: { namespace: string; count: number }[];
-  entities: { entity: string; count: number }[];
-}
+type ActiveTab = "recall" | "store";
 
 // ─── Component ────────────────────────────────────────────────────
 
@@ -69,25 +66,33 @@ export default function HomePage() {
   // ── Data ──────────────────────────────────────────────────────
   const [namespaces, setNamespaces] = useState<NamespaceItem[]>([]);
   const [entities, setEntities] = useState<EntityItem[]>([]);
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [entityCount, setEntityCount] = useState(0);
   const [results, setResults] = useState<RecallResult[]>([]);
 
-  // ── Inputs ─────────────────────────────────────────────────────
+  // ── Recall inputs ──────────────────────────────────────────────
   const [query, setQuery] = useState("");
   const [selectedNs, setSelectedNs] = useState("");
   const [selectedEntity, setSelectedEntity] = useState("");
+
+  // ── Store inputs ───────────────────────────────────────────────
+  const [storeContent, setStoreContent] = useState("");
+  const [storeNs, setStoreNs] = useState("");
+  const [storeEntity, setStoreEntity] = useState("");
+  const [storeTags, setStoreTags] = useState("");
 
   // ── State ──────────────────────────────────────────────────────
   const [loadingNs, setLoadingNs] = useState(true);
   const [loadingEntities, setLoadingEntities] = useState(false);
   const [searching, setSearching] = useState(false);
-  const [loadingStats, setLoadingStats] = useState(true);
+  const [storing, setStoring] = useState(false);
+  const [activeTab, setActiveTab] = useState<ActiveTab>("recall");
+  const statsCached = useRef(false);
 
   useEffect(() => {
     if (!sessionPending && !session) router.push("/auth");
   }, [sessionPending, session, router]);
 
-  // ── Fetch namespaces ────────────────────────────────────────────
+  // ── Fetch namespaces + entity count ─────────────────────────────
   const fetchNamespaces = useCallback(async () => {
     setLoadingNs(true);
     try {
@@ -97,6 +102,25 @@ export default function HomePage() {
       if (!res.ok) throw new Error();
       const data: NamespaceItem[] = await res.json();
       setNamespaces(data);
+
+      // Count unique entities across all namespaces
+      const allEnts = new Set<string>();
+      await Promise.all(
+        data.map(async (ns) => {
+          try {
+            const r = await fetch(
+              `/api/projects/${projectId}/memories?action=entities&namespace=${encodeURIComponent(ns.namespace)}`,
+            );
+            if (r.ok) {
+              const ents: EntityItem[] = await r.json();
+              ents.forEach((e) => allEnts.add(e.entity));
+            }
+          } catch {
+            /* skip */
+          }
+        }),
+      );
+      setEntityCount(allEnts.size);
     } catch {
       toast.error("Failed to load namespaces");
     } finally {
@@ -126,29 +150,17 @@ export default function HomePage() {
     [projectId],
   );
 
-  // ── Fetch stats ─────────────────────────────────────────────────
-  const fetchStats = useCallback(async () => {
-    setLoadingStats(true);
-    try {
-      const res = await fetch(
-        `/api/projects/${projectId}/memories?action=stats`,
-      );
-      if (!res.ok) throw new Error();
-      const data: Stats = await res.json();
-      setStats(data);
-    } catch {
-      /* ignore — stats are optional */
-    } finally {
-      setLoadingStats(false);
-    }
-  }, [projectId]);
-
   useEffect(() => {
-    if (session) {
+    if (session && !statsCached.current) {
       fetchNamespaces();
-      fetchStats();
+      statsCached.current = true;
     }
-  }, [session, fetchNamespaces, fetchStats]);
+  }, [session, fetchNamespaces]);
+
+  /** Force refresh stats */
+  const handleRefreshStats = () => {
+    fetchNamespaces();
+  };
 
   // ── Handle namespace change ─────────────────────────────────────
   const handleNsChange = (ns: string) => {
@@ -192,10 +204,41 @@ export default function HomePage() {
     }
   };
 
-  if (sessionPending || !session) return null;
+  // ── Store ───────────────────────────────────────────────────────
+  const handleStore = async () => {
+    if (!storeContent.trim() || !storeNs.trim() || !storeEntity.trim()) {
+      toast.error("Namespace, entity, and content are required");
+      return;
+    }
+    setStoring(true);
+    try {
+      const tags = storeTags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean);
+      const res = await fetch(`/api/projects/${projectId}/memories`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "store",
+          namespace: storeNs.trim(),
+          entity: storeEntity.trim(),
+          content: storeContent.trim(),
+          tags: tags.length > 0 ? tags : undefined,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Memory stored successfully");
+      setStoreContent("");
+      setStoreTags("");
+    } catch {
+      toast.error("Failed to store memory");
+    } finally {
+      setStoring(false);
+    }
+  };
 
-  const totalDistributed =
-    stats?.namespaces.reduce((s, n) => s + n.count, 0) ?? 1;
+  if (sessionPending || !session) return null;
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
@@ -207,323 +250,417 @@ export default function HomePage() {
         <div>
           <h1 className="text-xl font-bold">Home</h1>
           <p className="text-muted-foreground text-xs">
-            Recall memories and project analytics
+            Store and recall memories
           </p>
         </div>
-      </div>
-
-      {/* ── Stats Bar ──────────────────────────────────────────────── */}
-      <StatsBar
-        totalMemories={stats?.total_memories ?? 0}
-        namespaceCount={stats?.namespace_count ?? 0}
-        entityCount={stats?.entity_count ?? 0}
-        loading={loadingStats}
-      />
-
-      {/* ── Recall Search ─────────────────────────────────────────── */}
-      <Card className="border-dashed">
-        <CardContent className="p-0">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-dashed">
-            <Search className="size-4 text-muted-foreground shrink-0" />
-            <span className="text-sm font-semibold">Recall</span>
-            <span className="text-xs text-muted-foreground">
-              — Semantic search across your memories
-            </span>
-          </div>
-          <div className="p-4 space-y-3">
-            {/* Namespace / Entity selectors */}
-            <div className="flex gap-2 flex-wrap">
-              <Select
-                value={selectedNs}
-                onValueChange={(val) => handleNsChange(val as string)}
-              >
-                <SelectTrigger className="min-w-[180px]">
-                  <SelectValue
-                    placeholder={loadingNs ? "Loading..." : "Select namespace"}
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {namespaces.map((ns) => (
-                    <SelectItem key={ns.namespace} value={ns.namespace}>
-                      <Database className="size-3.5 text-muted-foreground" />
-                      {ns.namespace}
-                      <span className="text-muted-foreground">
-                        ({ns.count})
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={selectedEntity}
-                onValueChange={(val) => {
-                  setSelectedEntity(val as string);
-                  setResults([]);
-                }}
-                disabled={!selectedNs || loadingEntities}
-              >
-                <SelectTrigger className="min-w-[180px]">
-                  <SelectValue
-                    placeholder={
-                      loadingEntities
-                        ? "Loading..."
-                        : !selectedNs
-                          ? "Select namespace first"
-                          : "Select entity"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {entities.map((ent) => (
-                    <SelectItem key={ent.entity} value={ent.entity}>
-                      <User className="size-3.5 text-muted-foreground" />
-                      {ent.entity}
-                      <span className="text-muted-foreground">
-                        ({ent.count})
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Search input */}
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="What do you remember about..."
-                className="flex-1 h-9 rounded-md border bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleRecall();
-                }}
-                disabled={!selectedNs || !selectedEntity}
-              />
-              <Button
-                size="sm"
-                className="h-9 gap-1.5"
-                onClick={handleRecall}
-                disabled={searching || !query.trim() || !selectedEntity}
-              >
-                {searching ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : (
-                  <Sparkles className="size-3.5" />
-                )}
-                Recall
-              </Button>
-            </div>
-          </div>
-
-          {/* ── Results ──────────────────────────────────────────── */}
-          {results.length > 0 ? (
-            <div className="border-t border-dashed">
-              <div className="px-4 py-2 text-xs text-muted-foreground font-medium">
-                {results.length} result{results.length !== 1 ? "s" : ""} found
-              </div>
-              <div className="divide-y max-h-[400px] overflow-y-auto">
-                {results.map((r) => (
-                  <div
-                    key={r.id}
-                    className="px-4 py-3 hover:bg-muted/30 transition-colors"
-                  >
-                    <p className="text-sm leading-relaxed">{r.content}</p>
-                    <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Sparkles className="size-3" />
-                        {(r.score * 100).toFixed(0)}% match
-                      </span>
-                      <span>
-                        Similarity: {(r.similarity * 100).toFixed(0)}%
-                      </span>
-                      <span>
-                        Importance: {(r.importance * 100).toFixed(0)}%
-                      </span>
-                      {r.tags && r.tags.length > 0 && (
-                        <span className="flex items-center gap-1">
-                          <Hash className="size-3" />
-                          {r.tags.join(", ")}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+        <div className="flex-1" />
+        <div className="flex items-center gap-1.5">
+          {loadingNs ? (
+            <>
+              <Skeleton className="h-4 w-16 rounded" />
+              <Skeleton className="h-4 w-16 rounded" />
+              <Skeleton className="h-4 w-16 rounded" />
+            </>
           ) : (
-            !searching && (
-              <div className="border-t border-dashed">
-                <div className="px-4 py-2 text-xs text-muted-foreground font-medium">
-                  Example results
-                </div>
-                <div className="divide-y opacity-50">
-                  {[
-                    {
-                      content:
-                        "User prefers dark mode and uses TypeScript for all projects",
-                      score: 94,
-                      similarity: 92,
-                      importance: 80,
-                      tags: ["preference", "dev"],
-                    },
-                    {
-                      content:
-                        "Scheduled a meeting for next Friday to discuss the API redesign",
-                      score: 87,
-                      similarity: 85,
-                      importance: 70,
-                      tags: ["meeting", "api"],
-                    },
-                    {
-                      content:
-                        "Favorite framework is Next.js with App Router, prefers server components",
-                      score: 76,
-                      similarity: 78,
-                      importance: 60,
-                      tags: ["preference"],
-                    },
-                  ].map((r, i) => (
-                    <div key={i} className="px-4 py-3">
-                      <p className="text-sm leading-relaxed">{r.content}</p>
-                      <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Sparkles className="size-3" />
-                          {r.score}% match
-                        </span>
-                        <span>Similarity: {r.similarity}%</span>
-                        <span>Importance: {r.importance}%</span>
-                        <span className="flex items-center gap-1">
-                          <Hash className="size-3" />
-                          {r.tags.join(", ")}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            namespaces.length > 0 && (
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="size-3 text-violet-500" />
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {namespaces.reduce((s, n) => s + n.count, 0).toLocaleString()}
+                  </span>
+                  memories
+                </span>
+                <span className="h-3.5 w-px bg-border" />
+                <span className="flex items-center gap-1.5">
+                  <Database className="size-3 text-blue-500" />
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {namespaces.length}
+                  </span>
+                  namespaces
+                </span>
+                <span className="h-3.5 w-px bg-border" />
+                <span className="flex items-center gap-1.5">
+                  <User className="size-3 text-emerald-500" />
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {entityCount}
+                  </span>
+                  entities
+                </span>
               </div>
             )
           )}
+          <button
+            onClick={handleRefreshStats}
+            disabled={loadingNs}
+            className={cn(
+              "ml-1 p-1 rounded text-muted-foreground hover:text-foreground transition-colors cursor-pointer",
+              loadingNs && "opacity-50 cursor-not-allowed",
+            )}
+            title="Refresh stats"
+          >
+            <RefreshCw className={cn("size-3", loadingNs && "animate-spin")} />
+          </button>
+        </div>
+      </div>
+
+      {/* ── Tabbed Card ────────────────────────────────────────────── */}
+      <Card className="border-dashed">
+        <CardContent className="p-0">
+          {/* Tab selector — card style */}
+          <div className="p-4 border-b border-dashed">
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setActiveTab("recall")}
+                className={cn(
+                  "relative flex flex-col items-center gap-2 rounded-lg border p-4 text-center transition-all cursor-pointer",
+                  activeTab === "recall"
+                    ? "border-primary/50 bg-primary/5 shadow-[0_0_12px_-3px] shadow-primary/20"
+                    : "border-border/50 bg-muted/30 hover:bg-muted/50 hover:border-border",
+                )}
+              >
+                {activeTab === "recall" && (
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium text-primary-foreground">
+                    Active
+                  </span>
+                )}
+                <div
+                  className={cn(
+                    "flex items-center justify-center rounded-md p-2",
+                    activeTab === "recall" ? "bg-primary/10" : "bg-muted",
+                  )}
+                >
+                  <Search
+                    className={cn(
+                      "size-5",
+                      activeTab === "recall"
+                        ? "text-primary"
+                        : "text-muted-foreground",
+                    )}
+                  />
+                </div>
+                <div>
+                  <div
+                    className={cn(
+                      "text-sm font-semibold",
+                      activeTab !== "recall" && "text-muted-foreground",
+                    )}
+                  >
+                    Recall
+                  </div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    Semantic search across memories
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setActiveTab("store")}
+                className={cn(
+                  "relative flex flex-col items-center gap-2 rounded-lg border p-4 text-center transition-all cursor-pointer",
+                  activeTab === "store"
+                    ? "border-emerald-500/50 bg-emerald-500/5 shadow-[0_0_12px_-3px] shadow-emerald-500/20"
+                    : "border-border/50 bg-muted/30 hover:bg-muted/50 hover:border-border",
+                )}
+              >
+                {activeTab === "store" && (
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-medium text-white">
+                    Active
+                  </span>
+                )}
+                <div
+                  className={cn(
+                    "flex items-center justify-center rounded-md p-2",
+                    activeTab === "store" ? "bg-emerald-500/10" : "bg-muted",
+                  )}
+                >
+                  <Plus
+                    className={cn(
+                      "size-5",
+                      activeTab === "store"
+                        ? "text-emerald-500"
+                        : "text-muted-foreground",
+                    )}
+                  />
+                </div>
+                <div>
+                  <div
+                    className={cn(
+                      "text-sm font-semibold",
+                      activeTab !== "store" && "text-muted-foreground",
+                    )}
+                  >
+                    Store
+                  </div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    Add a new memory to the project
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* ── Recall Tab ───────────────────────────────────────── */}
+          {activeTab === "recall" && (
+            <>
+              <div className="p-4 space-y-3">
+                {/* Namespace / Entity selectors */}
+                <div className="flex gap-2 flex-wrap">
+                  <Select
+                    value={selectedNs}
+                    onValueChange={(val) => handleNsChange(val as string)}
+                  >
+                    <SelectTrigger className="min-w-[180px]">
+                      <SelectValue
+                        placeholder={
+                          loadingNs ? "Loading..." : "Select namespace"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {namespaces.map((ns) => (
+                        <SelectItem key={ns.namespace} value={ns.namespace}>
+                          <Database className="size-3.5 text-muted-foreground" />
+                          {ns.namespace}
+                          <span className="text-muted-foreground">
+                            ({ns.count})
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Select
+                    value={selectedEntity}
+                    onValueChange={(val) => {
+                      setSelectedEntity(val as string);
+                      setResults([]);
+                    }}
+                    disabled={!selectedNs || loadingEntities}
+                  >
+                    <SelectTrigger className="min-w-[180px]">
+                      <SelectValue
+                        placeholder={
+                          loadingEntities
+                            ? "Loading..."
+                            : !selectedNs
+                              ? "Select namespace first"
+                              : "Select entity"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {entities.map((ent) => (
+                        <SelectItem key={ent.entity} value={ent.entity}>
+                          <User className="size-3.5 text-muted-foreground" />
+                          {ent.entity}
+                          <span className="text-muted-foreground">
+                            ({ent.count})
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Search input */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="What do you remember about..."
+                    className="flex-1 h-9 rounded-md border bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleRecall();
+                    }}
+                    disabled={!selectedNs || !selectedEntity}
+                  />
+                  <Button
+                    size="sm"
+                    className="h-9 gap-1.5"
+                    onClick={handleRecall}
+                    disabled={searching || !query.trim() || !selectedEntity}
+                  >
+                    {searching ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="size-3.5" />
+                    )}
+                    Recall
+                  </Button>
+                </div>
+              </div>
+
+              {/* ── Results ──────────────────────────────────────── */}
+              {results.length > 0 ? (
+                <div className="border-t border-dashed">
+                  <div className="px-4 py-2 text-xs text-muted-foreground font-medium">
+                    {results.length} result{results.length !== 1 ? "s" : ""}{" "}
+                    found
+                  </div>
+                  <div className="divide-y max-h-[400px] overflow-y-auto">
+                    {results.map((r) => (
+                      <div
+                        key={r.id}
+                        className="px-4 py-3 hover:bg-muted/30 transition-colors"
+                      >
+                        <p className="text-sm leading-relaxed">{r.content}</p>
+                        <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Sparkles className="size-3" />
+                            {(r.score * 100).toFixed(0)}% match
+                          </span>
+                          <span>
+                            Similarity: {(r.similarity * 100).toFixed(0)}%
+                          </span>
+                          <span>
+                            Importance: {(r.importance * 100).toFixed(0)}%
+                          </span>
+                          {r.tags && r.tags.length > 0 && (
+                            <span className="flex items-center gap-1">
+                              <Hash className="size-3" />
+                              {r.tags.join(", ")}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                !searching && (
+                  <div className="border-t border-dashed">
+                    <div className="px-4 py-2 text-xs text-muted-foreground font-medium">
+                      Example results
+                    </div>
+                    <div className="divide-y opacity-50">
+                      {[
+                        {
+                          content:
+                            "User prefers dark mode and uses TypeScript for all projects",
+                          score: 94,
+                          similarity: 92,
+                          importance: 80,
+                          tags: ["preference", "dev"],
+                        },
+                        {
+                          content:
+                            "Scheduled a meeting for next Friday to discuss the API redesign",
+                          score: 87,
+                          similarity: 85,
+                          importance: 70,
+                          tags: ["meeting", "api"],
+                        },
+                        {
+                          content:
+                            "Favorite framework is Next.js with App Router, prefers server components",
+                          score: 76,
+                          similarity: 78,
+                          importance: 60,
+                          tags: ["preference"],
+                        },
+                      ].map((r, i) => (
+                        <div key={i} className="px-4 py-3">
+                          <p className="text-sm leading-relaxed">{r.content}</p>
+                          <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Sparkles className="size-3" />
+                              {r.score}% match
+                            </span>
+                            <span>Similarity: {r.similarity}%</span>
+                            <span>Importance: {r.importance}%</span>
+                            <span className="flex items-center gap-1">
+                              <Hash className="size-3" />
+                              {r.tags.join(", ")}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              )}
+            </>
+          )}
+
+          {/* ── Store Tab ────────────────────────────────────────── */}
+          {activeTab === "store" && (
+            <div className="p-4 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="store-ns" className="text-xs">
+                    Namespace
+                  </Label>
+                  <Input
+                    id="store-ns"
+                    placeholder="e.g. chat, notes"
+                    value={storeNs}
+                    onChange={(e) => setStoreNs(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="store-entity" className="text-xs">
+                    Entity
+                  </Label>
+                  <Input
+                    id="store-entity"
+                    placeholder="e.g. user-123, session-abc"
+                    value={storeEntity}
+                    onChange={(e) => setStoreEntity(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="store-content" className="text-xs">
+                  Content
+                </Label>
+                <textarea
+                  id="store-content"
+                  placeholder="Enter memory content..."
+                  className="flex min-h-[100px] w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+                  value={storeContent}
+                  onChange={(e) => setStoreContent(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="store-tags" className="text-xs">
+                  Tags{" "}
+                  <span className="text-muted-foreground font-normal">
+                    (comma separated, optional)
+                  </span>
+                </Label>
+                <Input
+                  id="store-tags"
+                  placeholder="e.g. preference, important"
+                  value={storeTags}
+                  onChange={(e) => setStoreTags(e.target.value)}
+                />
+              </div>
+
+              <Button
+                className="gap-1.5"
+                onClick={handleStore}
+                disabled={
+                  storing ||
+                  !storeContent.trim() ||
+                  !storeNs.trim() ||
+                  !storeEntity.trim()
+                }
+              >
+                {storing ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Plus className="size-3.5" />
+                )}
+                Store Memory
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
-
-      {/* ── Breakdown ─────────────────────────────────────────────── */}
-      {stats && (stats.namespaces.length > 0 || stats.entities.length > 0) && (
-        <div className="grid md:grid-cols-2 gap-3">
-          {/* Namespace distribution */}
-          {stats.namespaces.length > 0 && (
-            <Card className="shadow-none">
-              <CardContent className="p-4">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <Database className="size-3.5 text-blue-500" />
-                  Memories by Namespace
-                </h3>
-
-                {/* Stacked bar */}
-                <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted mb-4">
-                  {stats.namespaces.map((ns, i) => {
-                    const pct = (ns.count / totalDistributed) * 100;
-                    const colors = [
-                      "bg-blue-500",
-                      "bg-violet-500",
-                      "bg-emerald-500",
-                      "bg-amber-500",
-                      "bg-rose-500",
-                      "bg-cyan-500",
-                      "bg-orange-500",
-                      "bg-pink-500",
-                      "bg-teal-500",
-                      "bg-indigo-500",
-                    ];
-                    return (
-                      <div
-                        key={ns.namespace}
-                        className={cn("h-full", colors[i % colors.length])}
-                        style={{ width: `${pct}%` }}
-                      />
-                    );
-                  })}
-                </div>
-
-                {/* Legend */}
-                <div className="space-y-1.5">
-                  {stats.namespaces.map((ns, i) => {
-                    const colors = [
-                      "bg-blue-500",
-                      "bg-violet-500",
-                      "bg-emerald-500",
-                      "bg-amber-500",
-                      "bg-rose-500",
-                      "bg-cyan-500",
-                      "bg-orange-500",
-                      "bg-pink-500",
-                      "bg-teal-500",
-                      "bg-indigo-500",
-                    ];
-                    return (
-                      <div
-                        key={ns.namespace}
-                        className="flex items-center text-xs"
-                      >
-                        <span
-                          className={cn(
-                            "size-2.5 rounded-sm shrink-0 mr-2",
-                            colors[i % colors.length],
-                          )}
-                        />
-                        <span className="flex-1 truncate text-muted-foreground">
-                          {ns.namespace}
-                        </span>
-                        <span className="tabular-nums font-medium ml-2">
-                          {ns.count}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Entity distribution */}
-          {stats.entities.length > 0 && (
-            <Card className="shadow-none">
-              <CardContent className="p-4">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <User className="size-3.5 text-emerald-500" />
-                  Memories by Entity
-                </h3>
-
-                <div className="space-y-2">
-                  {stats.entities.map((ent) => {
-                    const max = stats.entities[0]?.count ?? 1;
-                    const pct = (ent.count / max) * 100;
-                    return (
-                      <div key={ent.entity}>
-                        <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="text-muted-foreground truncate">
-                            {ent.entity}
-                          </span>
-                          <span className="tabular-nums font-medium ml-2">
-                            {ent.count}
-                          </span>
-                        </div>
-                        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-emerald-500 transition-all"
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
     </div>
   );
 }

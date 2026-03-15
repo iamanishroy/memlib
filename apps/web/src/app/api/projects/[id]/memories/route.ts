@@ -272,7 +272,7 @@ export async function DELETE(
   }
 }
 
-// ─── POST /api/projects/[id]/memories — recall ─────────────────────
+// ─── POST /api/projects/[id]/memories — recall or store ────────────
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -287,19 +287,15 @@ export async function POST(
     action: string;
     namespace: string;
     entity: string;
-    query: string;
+    query?: string;
+    content?: string;
+    tags?: string[];
+    metadata?: Record<string, unknown>;
     limit?: number;
   };
 
-  if (body.action !== "recall") {
+  if (body.action !== "recall" && body.action !== "store") {
     return Response.json({ error: "Invalid action" }, { status: 400 });
-  }
-
-  if (!body.namespace || !body.entity || !body.query) {
-    return Response.json(
-      { error: "namespace, entity, and query are required" },
-      { status: 400 },
-    );
   }
 
   // Get project config for embedding + LLM
@@ -329,13 +325,42 @@ export async function POST(
   });
 
   try {
-    const results = await memoryService.recall(
-      body.namespace,
-      body.entity,
-      body.query,
-      { limit: body.limit ?? 10 },
-    );
-    return Response.json(results);
+    // ── Recall ─────────────────────────────────────────────────
+    if (body.action === "recall") {
+      if (!body.namespace || !body.entity || !body.query) {
+        return Response.json(
+          { error: "namespace, entity, and query are required" },
+          { status: 400 },
+        );
+      }
+      const results = await memoryService.recall(
+        body.namespace,
+        body.entity,
+        body.query,
+        { limit: body.limit ?? 10 },
+      );
+      return Response.json(results);
+    }
+
+    // ── Store ──────────────────────────────────────────────────
+    if (body.action === "store") {
+      if (!body.namespace || !body.entity || !body.content) {
+        return Response.json(
+          { error: "namespace, entity, and content are required" },
+          { status: 400 },
+        );
+      }
+      const memory = await memoryService.store(
+        body.namespace,
+        body.entity,
+        body.content,
+        {
+          tags: body.tags,
+          metadata: body.metadata,
+        },
+      );
+      return Response.json(memory);
+    }
   } finally {
     await memoryService.close();
   }
