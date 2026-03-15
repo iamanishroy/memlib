@@ -11,32 +11,31 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { ChevronsUpDown, Folder, Plus } from "lucide-react";
-import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useQuery } from "@tanstack/react-query";
 
 type Project = {
   id: string;
   name: string;
 };
 
+async function fetchProjects() {
+  const res = await fetch("/api/projects");
+  if (!res.ok) throw new Error("Failed to fetch projects");
+  return (await res.json()) as Project[];
+}
+
 export function ProjectSwitcher() {
   const router = useRouter();
   const params = useParams();
   const currentProjectId = params?.projectId as string | undefined;
 
-  const [projects, setProjects] = React.useState<Project[]>([]);
-  const [loading, setLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    fetch("/api/projects")
-      .then((res) => res.json())
-      .then((data) => {
-        setProjects(Array.isArray(data) ? data : []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
+  const { data: projects = [], isLoading: loading } = useQuery({
+    queryKey: ["projects"],
+    queryFn: fetchProjects,
+    staleTime: Infinity,
+  });
 
   const activeProject = projects.find((p) => p.id === currentProjectId);
 

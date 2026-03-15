@@ -13,8 +13,9 @@ import {
   Trash2,
   User,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -81,6 +82,36 @@ function formatDate(dateStr: string) {
   });
 }
 
+// ─── Fetch helpers ────────────────────────────────────────────────
+
+async function fetchNamespaces(projectId: string) {
+  const res = await fetch(
+    `/api/projects/${projectId}/memories?action=namespaces`,
+  );
+  if (!res.ok) throw new Error("Failed to fetch namespaces");
+  return (await res.json()) as NamespaceItem[];
+}
+
+async function fetchEntities(projectId: string, namespace: string) {
+  const res = await fetch(
+    `/api/projects/${projectId}/memories?action=entities&namespace=${encodeURIComponent(namespace)}`,
+  );
+  if (!res.ok) throw new Error("Failed to fetch entities");
+  return (await res.json()) as EntityItem[];
+}
+
+async function fetchMemories(
+  projectId: string,
+  namespace: string,
+  entity: string,
+) {
+  const res = await fetch(
+    `/api/projects/${projectId}/memories?action=list&namespace=${encodeURIComponent(namespace)}&entity=${encodeURIComponent(entity)}`,
+  );
+  if (!res.ok) throw new Error("Failed to fetch memories");
+  return (await res.json()) as { memories: MemoryRow[]; total: number };
+}
+
 // ─── Component ────────────────────────────────────────────────────
 
 export default function MemoriesPage() {
@@ -88,12 +119,7 @@ export default function MemoriesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { projectId } = useProject();
-
-  // ── Data state ─────────────────────────────────────────────────
-  const [namespaces, setNamespaces] = useState<NamespaceItem[]>([]);
-  const [entities, setEntities] = useState<EntityItem[]>([]);
-  const [memories, setMemories] = useState<MemoryRow[]>([]);
-  const [totalMemories, setTotalMemories] = useState(0);
+  const queryClient = useQueryClient();
 
   // ── Selection state (derived from URL) ─────────────────────────
   const selectedNs = searchParams.get("ns");
@@ -101,27 +127,26 @@ export default function MemoriesPage() {
   const selectedMemoryId = searchParams.get("memory");
   const [selectedMemory, setSelectedMemory] = useState<MemoryRow | null>(null);
 
-  // ── Loading state ──────────────────────────────────────────────
-  const [loadingNs, setLoadingNs] = useState(true);
-  const [loadingEntities, setLoadingEntities] = useState(false);
-  const [loadingMemories, setLoadingMemories] = useState(false);
+  // ── UI state ──────────────────────────────────────────────────
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   // ── URL helpers ────────────────────────────────────────────────
   const basePath = `/dash/${projectId}/memories`;
 
-  const updateUrl = useCallback(
-    (params: { ns?: string | null; entity?: string | null; memory?: string | null }) => {
-      const sp = new URLSearchParams();
-      if (params.ns) sp.set("ns", params.ns);
-      if (params.ns && params.entity) sp.set("entity", params.entity);
-      if (params.ns && params.entity && params.memory) sp.set("memory", params.memory);
-      const qs = sp.toString();
-      router.replace(`${basePath}${qs ? `?${qs}` : ""}` as any);
-    },
-    [router, basePath],
-  );
+  const updateUrl = (params: {
+    ns?: string | null;
+    entity?: string | null;
+    memory?: string | null;
+  }) => {
+    const sp = new URLSearchParams();
+    if (params.ns) sp.set("ns", params.ns);
+    if (params.ns && params.entity) sp.set("entity", params.entity);
+    if (params.ns && params.entity && params.memory)
+      sp.set("memory", params.memory);
+    const qs = sp.toString();
+    router.replace(`${basePath}${qs ? `?${qs}` : ""}` as any);
+  };
 
   useEffect(() => {
     if (!sessionPending && !session) {
@@ -129,94 +154,49 @@ export default function MemoriesPage() {
     }
   }, [sessionPending, session, router]);
 
-  // ── Fetch namespaces ───────────────────────────────────────────
-  const fetchNamespaces = useCallback(async () => {
-    setLoadingNs(true);
-    try {
-      const res = await fetch(
-        `/api/projects/${projectId}/memories?action=namespaces`,
-      );
-      if (!res.ok) throw new Error("Failed to fetch namespaces");
-      const data: NamespaceItem[] = await res.json();
-      setNamespaces(data);
-      return data;
-    } catch {
-      toast.error("Failed to load namespaces");
-      return [];
-    } finally {
-      setLoadingNs(false);
-    }
-  }, [projectId]);
+  // ── React Query: namespaces ────────────────────────────────────
+  const {
+    data: namespaces = [],
+    isLoading: loadingNs,
+    isFetching: fetchingNs,
+    refetch: refetchNs,
+  } = useQuery({
+    queryKey: ["memories-namespaces", projectId],
+    queryFn: () => fetchNamespaces(projectId),
+    enabled: !!session,
+    staleTime: Infinity,
+  });
 
-  // ── Fetch entities ─────────────────────────────────────────────
-  const fetchEntities = useCallback(
-    async (namespace: string) => {
-      setLoadingEntities(true);
-      setEntities([]);
-      try {
-        const res = await fetch(
-          `/api/projects/${projectId}/memories?action=entities&namespace=${encodeURIComponent(namespace)}`,
-        );
-        if (!res.ok) throw new Error("Failed to fetch entities");
-        const data: EntityItem[] = await res.json();
-        setEntities(data);
-        return data;
-      } catch {
-        toast.error("Failed to load entities");
-        return [];
-      } finally {
-        setLoadingEntities(false);
-      }
-    },
-    [projectId],
-  );
+  // ── React Query: entities ──────────────────────────────────────
+  const {
+    data: entities = [],
+    isLoading: loadingEntities,
+    isFetching: fetchingEntities,
+    refetch: refetchEntities,
+  } = useQuery({
+    queryKey: ["memories-entities", projectId, selectedNs],
+    queryFn: () => fetchEntities(projectId, selectedNs!),
+    enabled: !!session && !!selectedNs,
+    staleTime: Infinity,
+  });
 
-  // ── Fetch memories ─────────────────────────────────────────────
-  const fetchMemories = useCallback(
-    async (namespace: string, entity: string) => {
-      setLoadingMemories(true);
-      setMemories([]);
-      try {
-        const res = await fetch(
-          `/api/projects/${projectId}/memories?action=list&namespace=${encodeURIComponent(namespace)}&entity=${encodeURIComponent(entity)}`,
-        );
-        if (!res.ok) throw new Error("Failed to fetch memories");
-        const data: { memories: MemoryRow[]; total: number } = await res.json();
-        setMemories(data.memories);
-        setTotalMemories(data.total);
-        return data.memories;
-      } catch {
-        toast.error("Failed to load memories");
-        return [];
-      } finally {
-        setLoadingMemories(false);
-      }
-    },
-    [projectId],
-  );
+  // ── React Query: memories ──────────────────────────────────────
+  const {
+    data: memoriesData,
+    isLoading: loadingMemories,
+    isFetching: fetchingMemories,
+    refetch: refetchMemories,
+  } = useQuery({
+    queryKey: ["memories-list", projectId, selectedNs, selectedEntity],
+    queryFn: () => fetchMemories(projectId, selectedNs!, selectedEntity!),
+    enabled: !!session && !!selectedNs && !!selectedEntity,
+    staleTime: Infinity,
+  });
 
-  // ── Restore state from URL on initial load ─────────────────────
-  const restoredRef = useRef(false);
-  useEffect(() => {
-    if (!session || restoredRef.current) return;
-    restoredRef.current = true;
+  const memories = memoriesData?.memories ?? [];
+  const totalMemories = memoriesData?.total ?? 0;
 
-    (async () => {
-      await fetchNamespaces();
-      if (selectedNs) {
-        const ents = await fetchEntities(selectedNs);
-        if (selectedEntity && ents.length > 0) {
-          const mems = await fetchMemories(selectedNs, selectedEntity);
-          if (selectedMemoryId && mems.length > 0) {
-            const found = mems.find((m: MemoryRow) => m.id === selectedMemoryId);
-            if (found) setSelectedMemory(found);
-          }
-        }
-      }
-    })();
-  }, [session, selectedNs, selectedEntity, selectedMemoryId, fetchNamespaces, fetchEntities, fetchMemories]);
-
-  // ── Sync selected memory object when URL memoryId changes ──────
+  // ── Sync selected memory when URL or data changes ──────────────
   useEffect(() => {
     if (!selectedMemoryId) {
       setSelectedMemory(null);
@@ -229,18 +209,13 @@ export default function MemoriesPage() {
   // ── Handlers ───────────────────────────────────────────────────
   const handleSelectNamespace = (ns: string) => {
     updateUrl({ ns });
-    setEntities([]);
-    setMemories([]);
     setSelectedMemory(null);
-    fetchEntities(ns);
   };
 
   const handleSelectEntity = (entity: string) => {
     if (!selectedNs) return;
     updateUrl({ ns: selectedNs, entity });
-    setMemories([]);
     setSelectedMemory(null);
-    fetchMemories(selectedNs, entity);
   };
 
   const handleSelectMemory = (memory: MemoryRow) => {
@@ -260,10 +235,18 @@ export default function MemoriesPage() {
       toast.success("Memory deleted");
       setConfirmDelete(null);
 
-      // ── Optimistic local updates (no re-fetches) ───────────
+      // ── Optimistic updates via query cache ─────────────────
       // 1. Remove from memories list
-      setMemories((prev) => prev.filter((m) => m.id !== memoryId));
-      setTotalMemories((prev) => prev - 1);
+      queryClient.setQueryData(
+        ["memories-list", projectId, selectedNs, selectedEntity],
+        (old: { memories: MemoryRow[]; total: number } | undefined) =>
+          old
+            ? {
+                memories: old.memories.filter((m) => m.id !== memoryId),
+                total: old.total - 1,
+              }
+            : undefined,
+      );
 
       // 2. Clear selection if this memory was selected
       if (selectedMemory?.id === memoryId) {
@@ -272,21 +255,25 @@ export default function MemoriesPage() {
       }
 
       // 3. Decrement entity count
-      setEntities((prev) =>
-        prev
-          .map((e) =>
-            e.entity === selectedEntity ? { ...e, count: e.count - 1 } : e,
-          )
-          .filter((e) => e.count > 0),
+      queryClient.setQueryData(
+        ["memories-entities", projectId, selectedNs],
+        (old: EntityItem[] | undefined) =>
+          old
+            ?.map((e) =>
+              e.entity === selectedEntity ? { ...e, count: e.count - 1 } : e,
+            )
+            .filter((e) => e.count > 0),
       );
 
       // 4. Decrement namespace count
-      setNamespaces((prev) =>
-        prev
-          .map((ns) =>
-            ns.namespace === selectedNs ? { ...ns, count: ns.count - 1 } : ns,
-          )
-          .filter((ns) => ns.count > 0),
+      queryClient.setQueryData(
+        ["memories-namespaces", projectId],
+        (old: NamespaceItem[] | undefined) =>
+          old
+            ?.map((ns) =>
+              ns.namespace === selectedNs ? { ...ns, count: ns.count - 1 } : ns,
+            )
+            .filter((ns) => ns.count > 0),
       );
     } catch {
       toast.error("Failed to delete memory");
@@ -319,7 +306,7 @@ export default function MemoriesPage() {
       </div>
 
       {/* Breadcrumb */}
-      <div className="mb-3 flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+      <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
         <button
           className={cn(
             "rounded px-1.5 py-0.5 transition-colors hover:bg-muted hover:text-foreground",
@@ -327,8 +314,6 @@ export default function MemoriesPage() {
           )}
           onClick={() => {
             updateUrl({});
-            setEntities([]);
-            setMemories([]);
             setSelectedMemory(null);
           }}
         >
@@ -344,7 +329,6 @@ export default function MemoriesPage() {
               )}
               onClick={() => {
                 updateUrl({ ns: selectedNs });
-                setMemories([]);
                 setSelectedMemory(null);
               }}
             >
@@ -358,7 +342,9 @@ export default function MemoriesPage() {
             <button
               className={cn(
                 "rounded px-1.5 py-0.5 transition-colors hover:bg-muted hover:text-foreground",
-                selectedEntity && !selectedMemory && "text-foreground font-medium",
+                selectedEntity &&
+                  !selectedMemory &&
+                  "text-foreground font-medium",
               )}
               onClick={() => {
                 updateUrl({ ns: selectedNs, entity: selectedEntity });
@@ -391,12 +377,14 @@ export default function MemoriesPage() {
               </span>
             </div>
             <button
-              onClick={() => fetchNamespaces()}
-              disabled={loadingNs}
+              onClick={() => refetchNs()}
+              disabled={fetchingNs}
               className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50 cursor-pointer"
               title="Refresh namespaces"
             >
-              <RefreshCw className={cn("size-3", loadingNs && "animate-spin")} />
+              <RefreshCw
+                className={cn("size-3", fetchingNs && "animate-spin")}
+              />
             </button>
           </div>
           <div className="flex-1 overflow-y-auto">
@@ -465,12 +453,14 @@ export default function MemoriesPage() {
             </div>
             {selectedNs && (
               <button
-                onClick={() => fetchEntities(selectedNs)}
-                disabled={loadingEntities}
+                onClick={() => refetchEntities()}
+                disabled={fetchingEntities}
                 className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50 cursor-pointer"
                 title="Refresh entities"
               >
-                <RefreshCw className={cn("size-3", loadingEntities && "animate-spin")} />
+                <RefreshCw
+                  className={cn("size-3", fetchingEntities && "animate-spin")}
+                />
               </button>
             )}
           </div>
@@ -551,12 +541,14 @@ export default function MemoriesPage() {
             </div>
             {selectedNs && selectedEntity && (
               <button
-                onClick={() => fetchMemories(selectedNs, selectedEntity)}
-                disabled={loadingMemories}
+                onClick={() => refetchMemories()}
+                disabled={fetchingMemories}
                 className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50 cursor-pointer"
                 title="Refresh memories"
               >
-                <RefreshCw className={cn("size-3", loadingMemories && "animate-spin")} />
+                <RefreshCw
+                  className={cn("size-3", fetchingMemories && "animate-spin")}
+                />
               </button>
             )}
           </div>
@@ -626,10 +618,13 @@ export default function MemoriesPage() {
                       </p>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-[10px] text-muted-foreground">
-                          {new Date(mem.created_at).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                          })}
+                          {new Date(mem.created_at).toLocaleDateString(
+                            "en-US",
+                            {
+                              month: "short",
+                              day: "numeric",
+                            },
+                          )}
                         </span>
                         {mem.tags && mem.tags.length > 0 && (
                           <div className="flex items-center gap-1">

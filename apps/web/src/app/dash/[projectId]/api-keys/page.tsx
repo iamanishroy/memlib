@@ -11,8 +11,9 @@ import {
   Trash2Icon,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -90,6 +91,14 @@ const PERMISSION_MAP: Record<
   },
 };
 
+// ─── Fetch helper ─────────────────────────────────────────────────
+
+async function fetchApiKeys(projectId: string) {
+  const res = await fetch(`/api/projects/${projectId}/api-keys`);
+  if (!res.ok) throw new Error("Failed to fetch API keys");
+  return (await res.json()) as ApiKeyRow[];
+}
+
 // ─── Component ────────────────────────────────────────────────────
 
 export default function ApiKeysPage() {
@@ -97,8 +106,6 @@ export default function ApiKeysPage() {
   const router = useRouter();
   const { projectId } = useProject();
 
-  const [keys, setKeys] = useState<ApiKeyRow[]>([]);
-  const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [revoking, setRevoking] = useState<string | null>(null);
 
@@ -120,23 +127,17 @@ export default function ApiKeysPage() {
     }
   }, [sessionPending, session, router]);
 
-  // ─── Fetch keys ──────────────────────────────────────────────────
-  const fetchKeys = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/projects/${projectId}/api-keys`);
-      if (!res.ok) throw new Error("Failed to fetch");
-      const data: ApiKeyRow[] = await res.json();
-      setKeys(data);
-    } catch {
-      toast.error("Failed to load API keys");
-    } finally {
-      setLoading(false);
-    }
-  }, [projectId]);
-
-  useEffect(() => {
-    if (session) fetchKeys();
-  }, [session, fetchKeys]);
+  // ─── React Query: API keys ──────────────────────────────────────
+  const {
+    data: keys = [],
+    isLoading: loading,
+    refetch: refetchKeys,
+  } = useQuery({
+    queryKey: ["api-keys", projectId],
+    queryFn: () => fetchApiKeys(projectId),
+    enabled: !!session,
+    staleTime: Infinity,
+  });
 
   // ─── Create key ──────────────────────────────────────────────────
   const handleCreate = async () => {
@@ -162,7 +163,7 @@ export default function ApiKeysPage() {
       setNewName("");
       setNewPermission(1);
       toast.success("API key created");
-      fetchKeys();
+      refetchKeys();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to create key");
     } finally {
@@ -182,7 +183,7 @@ export default function ApiKeysPage() {
       if (!res.ok) throw new Error("Failed to revoke");
       toast.success("API key revoked");
       setConfirmRevokeId(null);
-      fetchKeys();
+      refetchKeys();
     } catch {
       toast.error("Failed to revoke API key");
     } finally {

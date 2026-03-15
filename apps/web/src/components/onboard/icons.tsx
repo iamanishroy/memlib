@@ -13,17 +13,11 @@ export function OpenAIIcon({ className = "size-4" }: { className?: string }) {
 
 export function GeminiIcon({ className = "size-4" }: { className?: string }) {
   return (
-    <svg
+    <img
+      src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/google-gemini-icon.png"
+      alt="Gemini"
       className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        d="M12 24C12 18.84 12 16.26 11.2 14.36C10.26 12.11 8.53 10.38 6.28 9.44C4.38 8.64 1.8 8.64 0 8.64V15.36C1.8 15.36 4.38 15.36 6.28 14.36C8.53 13.62 10.26 11.89 11.2 9.64C12 7.74 12 5.16 12 0C12 5.16 12 7.74 12.8 9.64C13.74 11.89 15.47 13.62 17.72 14.56C19.62 15.36 22.2 15.36 24 15.36V8.64C22.2 8.64 19.62 8.64 17.72 9.64C15.47 10.38 13.74 12.11 12.8 14.36C12 16.26 12 18.84 12 24Z"
-        fill="currentColor"
-      />
-    </svg>
+    />
   );
 }
 

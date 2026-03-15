@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useProject } from "./layout";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -56,6 +58,47 @@ interface RecallResult {
 
 type ActiveTab = "recall" | "store";
 
+// ─── Fetch helpers ────────────────────────────────────────────────
+
+async function fetchNamespacesWithEntityCount(projectId: string) {
+  const res = await fetch(
+    `/api/projects/${projectId}/memories?action=namespaces`,
+  );
+  if (!res.ok) throw new Error("Failed to load namespaces");
+  const namespaces: NamespaceItem[] = await res.json();
+
+  // Count unique entities across all namespaces
+  const allEnts = new Set<string>();
+  await Promise.all(
+    namespaces.map(async (ns) => {
+      try {
+        const r = await fetch(
+          `/api/projects/${projectId}/memories?action=entities&namespace=${encodeURIComponent(ns.namespace)}`,
+        );
+        if (r.ok) {
+          const ents: EntityItem[] = await r.json();
+          ents.forEach((e) => allEnts.add(e.entity));
+        }
+      } catch {
+        /* skip */
+      }
+    }),
+  );
+
+  return { namespaces, entityCount: allEnts.size };
+}
+
+async function fetchEntitiesForNamespace(
+  projectId: string,
+  namespace: string,
+) {
+  const res = await fetch(
+    `/api/projects/${projectId}/memories?action=entities&namespace=${encodeURIComponent(namespace)}`,
+  );
+  if (!res.ok) throw new Error("Failed to load entities");
+  return (await res.json()) as EntityItem[];
+}
+
 // ─── Component ────────────────────────────────────────────────────
 
 export default function HomePage() {
@@ -63,16 +106,11 @@ export default function HomePage() {
   const router = useRouter();
   const { projectId } = useProject();
 
-  // ── Data ──────────────────────────────────────────────────────
-  const [namespaces, setNamespaces] = useState<NamespaceItem[]>([]);
-  const [entities, setEntities] = useState<EntityItem[]>([]);
-  const [entityCount, setEntityCount] = useState(0);
-  const [results, setResults] = useState<RecallResult[]>([]);
-
   // ── Recall inputs ──────────────────────────────────────────────
   const [query, setQuery] = useState("");
   const [selectedNs, setSelectedNs] = useState("");
   const [selectedEntity, setSelectedEntity] = useState("");
+  const [results, setResults] = useState<RecallResult[]>([]);
 
   // ── Store inputs ───────────────────────────────────────────────
   const [storeContent, setStoreContent] = useState("");
@@ -81,96 +119,43 @@ export default function HomePage() {
   const [storeTags, setStoreTags] = useState("");
 
   // ── State ──────────────────────────────────────────────────────
-  const [loadingNs, setLoadingNs] = useState(true);
-  const [loadingEntities, setLoadingEntities] = useState(false);
   const [searching, setSearching] = useState(false);
   const [storing, setStoring] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>("recall");
-  const statsCached = useRef(false);
 
   useEffect(() => {
     if (!sessionPending && !session) router.push("/auth");
   }, [sessionPending, session, router]);
 
-  // ── Fetch namespaces + entity count ─────────────────────────────
-  const fetchNamespaces = useCallback(async () => {
-    setLoadingNs(true);
-    try {
-      const res = await fetch(
-        `/api/projects/${projectId}/memories?action=namespaces`,
-      );
-      if (!res.ok) throw new Error();
-      const data: NamespaceItem[] = await res.json();
-      setNamespaces(data);
+  // ── React Query: namespaces + entity count ──────────────────────
+  const {
+    data: nsData,
+    isLoading: loadingNs,
+    refetch: refetchNs,
+    isFetching: fetchingNs,
+  } = useQuery({
+    queryKey: ["namespaces", projectId],
+    queryFn: () => fetchNamespacesWithEntityCount(projectId),
+    enabled: !!session,
+    staleTime: Infinity, // 5 minutes
+  });
 
-      // Count unique entities across all namespaces
-      const allEnts = new Set<string>();
-      await Promise.all(
-        data.map(async (ns) => {
-          try {
-            const r = await fetch(
-              `/api/projects/${projectId}/memories?action=entities&namespace=${encodeURIComponent(ns.namespace)}`,
-            );
-            if (r.ok) {
-              const ents: EntityItem[] = await r.json();
-              ents.forEach((e) => allEnts.add(e.entity));
-            }
-          } catch {
-            /* skip */
-          }
-        }),
-      );
-      setEntityCount(allEnts.size);
-    } catch {
-      toast.error("Failed to load namespaces");
-    } finally {
-      setLoadingNs(false);
-    }
-  }, [projectId]);
+  const namespaces = nsData?.namespaces ?? [];
+  const entityCount = nsData?.entityCount ?? 0;
 
-  // ── Fetch entities ──────────────────────────────────────────────
-  const fetchEntities = useCallback(
-    async (ns: string) => {
-      setLoadingEntities(true);
-      setEntities([]);
-      setSelectedEntity("");
-      try {
-        const res = await fetch(
-          `/api/projects/${projectId}/memories?action=entities&namespace=${encodeURIComponent(ns)}`,
-        );
-        if (!res.ok) throw new Error();
-        const data: EntityItem[] = await res.json();
-        setEntities(data);
-      } catch {
-        toast.error("Failed to load entities");
-      } finally {
-        setLoadingEntities(false);
-      }
-    },
-    [projectId],
-  );
-
-  useEffect(() => {
-    if (session && !statsCached.current) {
-      fetchNamespaces();
-      statsCached.current = true;
-    }
-  }, [session, fetchNamespaces]);
-
-  /** Force refresh stats */
-  const handleRefreshStats = () => {
-    fetchNamespaces();
-  };
+  // ── React Query: entities for selected namespace ────────────────
+  const { data: entities = [], isLoading: loadingEntities } = useQuery({
+    queryKey: ["entities", projectId, selectedNs],
+    queryFn: () => fetchEntitiesForNamespace(projectId, selectedNs),
+    enabled: !!session && !!selectedNs,
+    staleTime: Infinity,
+  });
 
   // ── Handle namespace change ─────────────────────────────────────
   const handleNsChange = (ns: string) => {
     setSelectedNs(ns);
+    setSelectedEntity("");
     setResults([]);
-    if (ns) fetchEntities(ns);
-    else {
-      setEntities([]);
-      setSelectedEntity("");
-    }
   };
 
   // ── Recall ──────────────────────────────────────────────────────
@@ -291,15 +276,15 @@ export default function HomePage() {
             )
           )}
           <button
-            onClick={handleRefreshStats}
-            disabled={loadingNs}
+            onClick={() => refetchNs()}
+            disabled={fetchingNs}
             className={cn(
               "ml-1 p-1 rounded text-muted-foreground hover:text-foreground transition-colors cursor-pointer",
-              loadingNs && "opacity-50 cursor-not-allowed",
+              fetchingNs && "opacity-50 cursor-not-allowed",
             )}
             title="Refresh stats"
           >
-            <RefreshCw className={cn("size-3", loadingNs && "animate-spin")} />
+            <RefreshCw className={cn("size-3", fetchingNs && "animate-spin")} />
           </button>
         </div>
       </div>
@@ -406,61 +391,107 @@ export default function HomePage() {
               <div className="p-4 space-y-3">
                 {/* Namespace / Entity selectors */}
                 <div className="flex gap-2 flex-wrap">
-                  <Select
-                    value={selectedNs}
-                    onValueChange={(val) => handleNsChange(val as string)}
-                  >
-                    <SelectTrigger className="min-w-[180px]">
-                      <SelectValue
-                        placeholder={
-                          loadingNs ? "Loading..." : "Select namespace"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {namespaces.map((ns) => (
-                        <SelectItem key={ns.namespace} value={ns.namespace}>
-                          <Database className="size-3.5 text-muted-foreground" />
-                          {ns.namespace}
-                          <span className="text-muted-foreground">
-                            ({ns.count})
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {(() => {
+                    const nsItems = namespaces.map((ns) => ({
+                      label: ns.namespace,
+                      value: ns.namespace,
+                      count: ns.count,
+                    }));
+                    const selectedNsItem = nsItems.find((i) => i.value === selectedNs) ?? null;
+                    return (
+                      <Select
+                        value={selectedNsItem}
+                        onValueChange={(item) => {
+                          if (item) handleNsChange(item.value);
+                        }}
+                        items={nsItems}
+                      >
+                        <SelectTrigger className="min-w-[180px]">
+                          <SelectValue>
+                            {(item: { label: string; count: number } | null) =>
+                              item ? (
+                                <span className="flex items-center gap-1.5">
+                                  <Database className="size-3.5 text-muted-foreground" />
+                                  {item.label}
+                                  <span className="text-muted-foreground">({item.count})</span>
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">
+                                  {loadingNs ? "Loading..." : "Select namespace"}
+                                </span>
+                              )
+                            }
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent alignItemWithTrigger={false}>
+                          <SelectGroup>
+                            {nsItems.map((item) => (
+                              <SelectItem key={item.value} value={item}>
+                                <Database className="size-3.5 text-muted-foreground" />
+                                {item.label}
+                                <span className="text-muted-foreground">({item.count})</span>
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    );
+                  })()}
 
-                  <Select
-                    value={selectedEntity}
-                    onValueChange={(val) => {
-                      setSelectedEntity(val as string);
-                      setResults([]);
-                    }}
-                    disabled={!selectedNs || loadingEntities}
-                  >
-                    <SelectTrigger className="min-w-[180px]">
-                      <SelectValue
-                        placeholder={
-                          loadingEntities
-                            ? "Loading..."
-                            : !selectedNs
-                              ? "Select namespace first"
-                              : "Select entity"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {entities.map((ent) => (
-                        <SelectItem key={ent.entity} value={ent.entity}>
-                          <User className="size-3.5 text-muted-foreground" />
-                          {ent.entity}
-                          <span className="text-muted-foreground">
-                            ({ent.count})
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {(() => {
+                    const entItems = entities.map((ent) => ({
+                      label: ent.entity,
+                      value: ent.entity,
+                      count: ent.count,
+                    }));
+                    const selectedEntItem = entItems.find((i) => i.value === selectedEntity) ?? null;
+                    return (
+                      <Select
+                        value={selectedEntItem}
+                        onValueChange={(item) => {
+                          if (item) {
+                            setSelectedEntity(item.value);
+                            setResults([]);
+                          }
+                        }}
+                        items={entItems}
+                        disabled={!selectedNs || loadingEntities}
+                      >
+                        <SelectTrigger className="min-w-[180px]">
+                          <SelectValue>
+                            {(item: { label: string; count: number } | null) =>
+                              item ? (
+                                <span className="flex items-center gap-1.5">
+                                  <User className="size-3.5 text-muted-foreground" />
+                                  {item.label}
+                                  <span className="text-muted-foreground">({item.count})</span>
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">
+                                  {loadingEntities
+                                    ? "Loading..."
+                                    : !selectedNs
+                                      ? "Select namespace first"
+                                      : "Select entity"}
+                                </span>
+                              )
+                            }
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent alignItemWithTrigger={false}>
+                          <SelectGroup>
+                            {entItems.map((item) => (
+                              <SelectItem key={item.value} value={item}>
+                                <User className="size-3.5 text-muted-foreground" />
+                                {item.label}
+                                <span className="text-muted-foreground">({item.count})</span>
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    );
+                  })()}
                 </div>
 
                 {/* Search input */}

@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useProject } from "../layout";
 import { cn } from "@/lib/utils";
+import { GeminiIcon, OpenAIIcon, AnthropicIcon } from "@/components/onboard/icons";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -26,6 +29,7 @@ import {
   Loader2,
   Save,
   Settings,
+  Sparkles,
   Trash2,
   Zap,
 } from "lucide-react";
@@ -66,15 +70,22 @@ Given the following list of older memories, create a single concise summary that
 If a new memory exceeds this threshold against an existing memory in the same namespace + entity, it is considered a duplicate and skipped.`,
 };
 
+// ─── Fetch helper ─────────────────────────────────────────────────
+
+async function fetchProjectConfig(projectId: string) {
+  const res = await fetch(`/api/projects/${projectId}`);
+  if (!res.ok) throw new Error("Failed to load project settings");
+  return (await res.json()) as ProjectConfig;
+}
+
 // ─── Component ────────────────────────────────────────────────────
 
 export default function ConfigurationsPage() {
   const { data: session, isPending } = authClient.useSession();
   const router = useRouter();
   const { projectId } = useProject();
+  const queryClient = useQueryClient();
 
-  const [config, setConfig] = useState<ProjectConfig | null>(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeSection, setActiveSection] = useState<SectionId>("general");
 
@@ -88,24 +99,22 @@ export default function ConfigurationsPage() {
     if (!isPending && !session) router.push("/auth");
   }, [isPending, session, router]);
 
-  // ── Fetch project ─────────────────────────────────────────────
-  const fetchConfig = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/projects/${projectId}`);
-      if (!res.ok) throw new Error();
-      const data: ProjectConfig = await res.json();
-      setConfig(data);
-    } catch {
-      toast.error("Failed to load project settings");
-    } finally {
-      setLoading(false);
-    }
-  }, [projectId]);
+  // ── React Query: project config ────────────────────────────────
+  const {
+    data: config = null,
+    isLoading: loading,
+  } = useQuery({
+    queryKey: ["project-config", projectId],
+    queryFn: () => fetchProjectConfig(projectId),
+    enabled: !!session,
+    staleTime: Infinity,
+  });
 
+  // Local editable state derived from query data
+  const [editableConfig, setEditableConfig] = useState<ProjectConfig | null>(null);
   useEffect(() => {
-    if (session) fetchConfig();
-  }, [session, fetchConfig]);
+    if (config && !editableConfig) setEditableConfig(config);
+  }, [config, editableConfig]);
 
   // ── Save ──────────────────────────────────────────────────────
   const handleSave = async (fields: Partial<ProjectConfig>) => {
@@ -118,7 +127,8 @@ export default function ConfigurationsPage() {
       });
       if (!res.ok) throw new Error();
       const updated: ProjectConfig = await res.json();
-      setConfig(updated);
+      queryClient.setQueryData(["project-config", projectId], updated);
+      setEditableConfig(updated);
       toast.success("Settings saved");
     } catch {
       toast.error("Failed to save settings");
@@ -167,7 +177,7 @@ export default function ConfigurationsPage() {
 
   // ── Field updater ─────────────────────────────────────────────
   const update = (field: keyof ProjectConfig, value: string) => {
-    if (config) setConfig({ ...config, [field]: value });
+    if (editableConfig) setEditableConfig({ ...editableConfig, [field]: value });
   };
 
   return (
@@ -228,7 +238,7 @@ export default function ConfigurationsPage() {
 
         {/* Content area */}
         <div className="flex-1 overflow-y-auto min-w-0 md:border-l md:pl-6">
-          {loading || !config ? (
+          {loading || !editableConfig ? (
             <div className="flex items-center justify-center py-20">
               <Loader2 className="size-6 animate-spin text-muted-foreground" />
             </div>
@@ -247,7 +257,7 @@ export default function ConfigurationsPage() {
                         <Label htmlFor="name">Project Name</Label>
                         <Input
                           id="name"
-                          value={config.name}
+                          value={editableConfig.name}
                           onChange={(e) => update("name", e.target.value)}
                         />
                       </div>
@@ -256,14 +266,14 @@ export default function ConfigurationsPage() {
                         <Input
                           id="desc"
                           placeholder="Optional project description"
-                          value={config.description ?? ""}
+                          value={editableConfig.description ?? ""}
                           onChange={(e) => update("description", e.target.value)}
                         />
                       </div>
                       <div className="space-y-2">
                         <Label>Database URL</Label>
                         <Input
-                          value={config.databaseUrl}
+                          value={editableConfig.databaseUrl}
                           disabled
                           className="font-mono text-xs"
                         />
@@ -275,8 +285,8 @@ export default function ConfigurationsPage() {
                         className="gap-2"
                         onClick={() =>
                           handleSave({
-                            name: config.name,
-                            description: config.description,
+                            name: editableConfig.name,
+                            description: editableConfig.description,
                           })
                         }
                         disabled={saving}
@@ -306,27 +316,54 @@ export default function ConfigurationsPage() {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label>Provider</Label>
-                          <Select
-                            value={config.embeddingProvider}
-                            onValueChange={(v) =>
-                              update("embeddingProvider", v as string)
-                            }
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="gemini">Gemini</SelectItem>
-                              <SelectItem value="openai">OpenAI</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          {(() => {
+                            const embeddingProviders = [
+                              { label: "Gemini", value: "gemini", icon: <GeminiIcon /> },
+                              { label: "OpenAI", value: "openai", icon: <OpenAIIcon /> },
+                            ];
+                            const selected = embeddingProviders.find((p) => p.value === editableConfig.embeddingProvider) ?? null;
+                            return (
+                              <Select
+                                value={selected}
+                                onValueChange={(item) => {
+                                  if (item) update("embeddingProvider", item.value);
+                                }}
+                                items={embeddingProviders}
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue>
+                                    {(item: { label: string; icon: React.ReactNode } | null) =>
+                                      item ? (
+                                        <span className="flex items-center gap-2">
+                                          {item.icon}
+                                          {item.label}
+                                        </span>
+                                      ) : (
+                                        <span className="text-muted-foreground">Select provider</span>
+                                      )
+                                    }
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent alignItemWithTrigger={false}>
+                                  <SelectGroup>
+                                    {embeddingProviders.map((item) => (
+                                      <SelectItem key={item.value} value={item}>
+                                        {item.icon}
+                                        {item.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectGroup>
+                                </SelectContent>
+                              </Select>
+                            );
+                          })()}
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="emb-key">API Key</Label>
                           <Input
                             id="emb-key"
                             type="password"
-                            value={config.embeddingApiKey}
+                            value={editableConfig.embeddingApiKey}
                             onChange={(e) =>
                               update("embeddingApiKey", e.target.value)
                             }
@@ -340,28 +377,55 @@ export default function ConfigurationsPage() {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label>Provider</Label>
-                          <Select
-                            value={config.llmProvider}
-                            onValueChange={(v) =>
-                              update("llmProvider", v as string)
-                            }
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="gemini">Gemini</SelectItem>
-                              <SelectItem value="openai">OpenAI</SelectItem>
-                              <SelectItem value="anthropic">Anthropic</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          {(() => {
+                            const llmProviders = [
+                              { label: "Gemini", value: "gemini", icon: <GeminiIcon /> },
+                              { label: "OpenAI", value: "openai", icon: <OpenAIIcon /> },
+                              { label: "Anthropic", value: "anthropic", icon: <AnthropicIcon /> },
+                            ];
+                            const selected = llmProviders.find((p) => p.value === editableConfig.llmProvider) ?? null;
+                            return (
+                              <Select
+                                value={selected}
+                                onValueChange={(item) => {
+                                  if (item) update("llmProvider", item.value);
+                                }}
+                                items={llmProviders}
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue>
+                                    {(item: { label: string; icon: React.ReactNode } | null) =>
+                                      item ? (
+                                        <span className="flex items-center gap-2">
+                                          {item.icon}
+                                          {item.label}
+                                        </span>
+                                      ) : (
+                                        <span className="text-muted-foreground">Select provider</span>
+                                      )
+                                    }
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent alignItemWithTrigger={false}>
+                                  <SelectGroup>
+                                    {llmProviders.map((item) => (
+                                      <SelectItem key={item.value} value={item}>
+                                        {item.icon}
+                                        {item.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectGroup>
+                                </SelectContent>
+                              </Select>
+                            );
+                          })()}
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="llm-key">API Key</Label>
                           <Input
                             id="llm-key"
                             type="password"
-                            value={config.llmApiKey}
+                            value={editableConfig.llmApiKey}
                             onChange={(e) =>
                               update("llmApiKey", e.target.value)
                             }
@@ -373,7 +437,7 @@ export default function ConfigurationsPage() {
                         <Input
                           id="model"
                           placeholder="e.g. gpt-4o, gemini-2.0-flash"
-                          value={config.llmModel}
+                          value={editableConfig.llmModel}
                           onChange={(e) => update("llmModel", e.target.value)}
                         />
                       </div>
@@ -382,11 +446,11 @@ export default function ConfigurationsPage() {
                         className="gap-2"
                         onClick={() =>
                           handleSave({
-                            embeddingProvider: config.embeddingProvider,
-                            embeddingApiKey: config.embeddingApiKey,
-                            llmProvider: config.llmProvider,
-                            llmApiKey: config.llmApiKey,
-                            llmModel: config.llmModel,
+                            embeddingProvider: editableConfig.embeddingProvider,
+                            embeddingApiKey: editableConfig.embeddingApiKey,
+                            llmProvider: editableConfig.llmProvider,
+                            llmApiKey: editableConfig.llmApiKey,
+                            llmModel: editableConfig.llmModel,
                           })
                         }
                         disabled={saving}
@@ -545,11 +609,11 @@ export default function ConfigurationsPage() {
                       <div className="space-y-2">
                         <Label className="text-xs text-muted-foreground">
                           Type{" "}
-                          <code className="text-foreground">{config.name}</code>{" "}
+                          <code className="text-foreground">{editableConfig.name}</code>{" "}
                           to confirm
                         </Label>
                         <Input
-                          placeholder={config.name}
+                          placeholder={editableConfig.name}
                           value={confirmDelete}
                           onChange={(e) => setConfirmDelete(e.target.value)}
                         />
@@ -557,7 +621,7 @@ export default function ConfigurationsPage() {
                       <Button
                         variant="destructive"
                         className="gap-2"
-                        disabled={confirmDelete !== config.name || deleting}
+                        disabled={confirmDelete !== editableConfig.name || deleting}
                         onClick={handleDeleteProject}
                       >
                         {deleting ? (
