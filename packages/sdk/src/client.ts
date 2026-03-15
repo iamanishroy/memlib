@@ -17,6 +17,8 @@ const DEFAULT_BASE_URL = "https://memz-api.anishroy.com";
 export class MemZ {
   private readonly apiKey: string;
   private readonly baseUrl: string;
+  private readonly defaultNamespace: string;
+  private readonly defaultEntity: string;
 
   constructor(config: MemZConfig) {
     if (!config.apiKey) {
@@ -24,6 +26,8 @@ export class MemZ {
     }
     this.apiKey = config.apiKey;
     this.baseUrl = (config.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
+    this.defaultNamespace = config.namespace ?? "default";
+    this.defaultEntity = config.entity ?? "default";
   }
 
   // ── Internal ────────────────────────────────────────────────────
@@ -78,6 +82,16 @@ export class MemZ {
     return response.json() as Promise<T>;
   }
 
+  /** Resolve namespace — per-call override or constructor default */
+  private ns(override?: string): string {
+    return override ?? this.defaultNamespace;
+  }
+
+  /** Resolve entity — per-call override or constructor default */
+  private ent(override?: string): string {
+    return override ?? this.defaultEntity;
+  }
+
   // ── Public API ──────────────────────────────────────────────────
 
   /**
@@ -93,7 +107,8 @@ export class MemZ {
   async store(options: StoreOptions): Promise<Memory> {
     return this._request<Memory>("POST", "/memory", {
       body: {
-        namespace: options.namespace,
+        namespace: this.ns(options.namespace),
+        entity: this.ent(options.entity),
         content: options.content,
         tags: options.tags,
         metadata: options.metadata,
@@ -108,18 +123,20 @@ export class MemZ {
   async batchStore(options: BatchStoreOptions): Promise<BatchStoreResult> {
     return this._request<BatchStoreResult>("POST", "/memory/batch", {
       body: {
-        namespace: options.namespace,
+        namespace: this.ns(options.namespace),
+        entity: this.ent(options.entity),
         memories: options.memories,
       },
     });
   }
 
   /**
-   * List memories in a namespace.
+   * List memories in a namespace, optionally filtered by entity.
    */
-  async list(options: ListOptions): Promise<Memory[]> {
+  async list(options: ListOptions = {}): Promise<Memory[]> {
     const params: Record<string, string> = {
-      namespace: options.namespace,
+      namespace: this.ns(options.namespace),
+      entity: this.ent(options.entity),
     };
     if (options.limit !== undefined) {
       params["limit"] = String(options.limit);
@@ -140,7 +157,8 @@ export class MemZ {
   async recall(options: RecallOptions): Promise<RetrievedMemory[]> {
     return this._request<RetrievedMemory[]>("POST", "/memory/recall", {
       body: {
-        namespace: options.namespace,
+        namespace: this.ns(options.namespace),
+        entity: this.ent(options.entity),
         query: options.query,
         limit: options.limit,
         tags: options.tags,

@@ -18,8 +18,8 @@ async function getMemoryService(
   try {
     await client.connect();
     const result = await client.query(
-      `SELECT database_url, embedding_provider, embedding_api_key,
-              llm_provider, llm_api_key, llm_model
+      `SELECT "databaseUrl", "embeddingProvider", "embeddingApiKey",
+              "llmProvider", "llmApiKey", "llmModel"
        FROM project WHERE id = $1 LIMIT 1`,
       [projectId],
     );
@@ -27,15 +27,15 @@ async function getMemoryService(
     if (!proj) throw new Error(`Project not found: ${projectId}`);
 
     return createMemoryService({
-      database: { connectionString: proj.database_url },
+      database: { connectionString: proj.databaseUrl },
       embedding: {
-        provider: proj.embedding_provider as "gemini" | "openai",
-        apiKey: proj.embedding_api_key,
+        provider: proj.embeddingProvider as "gemini" | "openai",
+        apiKey: proj.embeddingApiKey,
       },
       llm: {
-        provider: proj.llm_provider as "gemini" | "openai" | "anthropic",
-        apiKey: proj.llm_api_key,
-        model: proj.llm_model,
+        provider: proj.llmProvider as "gemini" | "openai" | "anthropic",
+        apiKey: proj.llmApiKey,
+        model: proj.llmModel,
       },
     });
   } finally {

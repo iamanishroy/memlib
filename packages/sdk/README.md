@@ -1,77 +1,123 @@
-# memz
+# @memz/sdk
 
-TypeScript SDK for the [MemZ](https://memz.anishroy.com) memory API.
+TypeScript SDK for the MemZ memory API.
 
-## Install
+## Installation
 
 ```bash
-npm install memz
+npm install @memz/sdk
 ```
 
 ## Quick Start
 
-```ts
-import { MemZ } from "memz";
+```typescript
+import { MemZ } from "@memz/sdk";
 
 const memz = new MemZ({
-  apiKey: "sk_YOUR_KEY",
-  // baseUrl: "http://your_memz_api.com", // optional
+  apiKey: "sk_...",
+  namespace: "chat",     // default namespace for all calls
 });
 
-// Store a memory
+// Store a memory (entity scopes it to a user/session)
 await memz.store({
-  namespace: "default",
-  content: "Remember this fact",
+  entity: "user-123",
+  content: "User prefers dark mode and uses TypeScript",
 });
 
-// Semantic recall
+// Recall memories by meaning
 const results = await memz.recall({
-  namespace: "default",
-  query: "what facts do I know?",
+  entity: "user-123",
+  query: "What programming language does the user like?",
 });
 
-// List memories
-const memories = await memz.list({ namespace: "default" });
-
-// Delete a memory
-await memz.delete("MEMORY_UUID_HERE");
+console.log(results[0].content);
+// → "User prefers dark mode and uses TypeScript"
 ```
+
+## Configuration
+
+```typescript
+const memz = new MemZ({
+  apiKey: "sk_...",           // required
+  baseUrl: "https://...",     // optional, defaults to production API
+  namespace: "chat",          // optional, defaults to "default"
+  entity: "user-123",         // optional, defaults to "default"
+});
+```
+
+Both `namespace` and `entity` can be set in the constructor (as defaults) and overridden per-call.
 
 ## API
 
-### `new MemZ(config)`
+### `memz.store(options)`
 
-| Option    | Type     | Required | Default                         |
-| --------- | -------- | -------- | ------------------------------- |
-| `apiKey`  | `string` | ✅       |                                 |
-| `baseUrl` | `string` | ❌       | `https://memz-api.anishroy.com` |
+Store a single memory.
 
-### Methods
-
-| Method                | Description                   |
-| --------------------- | ----------------------------- |
-| `health()`            | Health check                  |
-| `store(options)`      | Store a single memory         |
-| `batchStore(options)` | Batch store multiple memories |
-| `list(options)`       | List memories in a namespace  |
-| `delete(memoryId)`    | Delete a memory by UUID       |
-| `recall(options)`     | Semantic search over memories |
-
-### Error Handling
-
-```ts
-import { MemZ, MemZError } from "memz";
-
-try {
-  await memz.store({ namespace: "default", content: "hello" });
-} catch (err) {
-  if (err instanceof MemZError) {
-    console.log(err.status); // HTTP status code
-    console.log(err.body); // parsed response body
-  }
-}
+```typescript
+await memz.store({
+  content: "Remember this fact",
+  entity: "user-123",           // optional if set in constructor
+  namespace: "notes",           // optional if set in constructor
+  tags: ["preference"],
+  metadata: { source: "chat" },
+  ttl: 86400,                   // expires in 24h
+});
 ```
 
-## License
+### `memz.recall(options)`
 
-MIT
+Semantic search with hybrid scoring (similarity + recency + importance).
+
+```typescript
+const memories = await memz.recall({
+  query: "What does the user prefer?",
+  entity: "user-123",
+  limit: 5,
+  tags: ["preference"],
+  minImportance: 0.3,
+});
+
+// Each result has: id, content, tags, metadata, similarity, recency, importance, score
+```
+
+### `memz.list(options?)`
+
+List memories scoped to namespace + entity.
+
+```typescript
+// Uses constructor defaults for namespace & entity
+const all = await memz.list();
+
+// Override entity or namespace per-call
+const filtered = await memz.list({ entity: "user-456", limit: 20 });
+```
+
+### `memz.batchStore(options)`
+
+Store multiple memories at once.
+
+```typescript
+await memz.batchStore({
+  entity: "user-123",
+  memories: [
+    { content: "Fact one" },
+    { content: "Fact two", tags: ["important"] },
+  ],
+});
+```
+
+### `memz.delete(memoryId)`
+
+Delete a memory by UUID.
+
+```typescript
+await memz.delete("550e8400-e29b-41d4-a716-446655440000");
+```
+
+### `memz.health()`
+
+Check API connectivity.
+
+```typescript
+const { status } = await memz.health();
+```
