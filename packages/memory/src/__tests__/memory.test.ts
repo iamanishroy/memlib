@@ -2,16 +2,34 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { MemoryDeps } from "../config";
 import {
   storeMemory,
+  storeSmartMemory,
   storeMemories,
   getMemories,
   deleteMemory,
 } from "../services/memory";
+
+// Mock extraction and conflict modules
+vi.mock("../services/extraction", () => ({
+  extractFacts: vi.fn().mockResolvedValue({
+    facts: [
+      { text: "Likes TypeScript", importance: 0.7, category: "preference" },
+    ],
+  }),
+}));
+
+vi.mock("../services/conflict", () => ({
+  resolveConflicts: vi.fn().mockResolvedValue({ resolutions: [] }),
+}));
 
 const mockDb = {
   insert: vi.fn(),
   delete: vi.fn(),
   query: {
     memories: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+    },
+    memoryEvents: {
       findMany: vi.fn(),
     },
   },
@@ -35,17 +53,19 @@ describe("Memory Service", () => {
     vi.clearAllMocks();
   });
 
-  describe("storeMemory", () => {
-    it("should store a memory with LLM-scored importance", async () => {
+  describe("storeMemory (raw)", () => {
+    it("should store a memory directly without inference", async () => {
       const mockMemory = {
         id: "test-uuid",
         namespace: "agent-1",
         entity: "user-alice",
         content: "I like TypeScript",
         embedding: new Array(1536).fill(0.1),
-        importance: 0.7,
+        importance: 0.5,
+        category: null,
         tags: [],
         memoryType: null,
+        source: null,
         archived: false,
         expiresAt: null,
         createdAt: new Date(),
@@ -53,6 +73,7 @@ describe("Memory Service", () => {
         metadata: {},
       };
 
+      // No similar memories found
       mockPool.query.mockResolvedValue({ rows: [] });
 
       const mockInsert = {
@@ -71,7 +92,7 @@ describe("Memory Service", () => {
       );
 
       expect(result).toEqual(mockMemory);
-      expect(result.importance).toBe(0.7);
+      expect(result.importance).toBe(0.5); // Raw store defaults to 0.5
       expect(mockDb.insert).toHaveBeenCalled();
     });
 
@@ -90,7 +111,11 @@ describe("Memory Service", () => {
         similarity: 0.98,
       };
 
+      // findSimilar returns a match
       mockPool.query.mockResolvedValue({ rows: [existingMemory] });
+
+      // db.query.memories.findFirst returns the full memory
+      mockDb.query.memories.findFirst.mockResolvedValue(existingMemory);
 
       const result = await storeMemory(
         deps,
@@ -100,7 +125,6 @@ describe("Memory Service", () => {
       );
 
       expect((result as any).deduplicated).toBe(true);
-      expect(mockDb.insert).not.toHaveBeenCalled();
     });
 
     it("should store a memory with tags and TTL", async () => {
@@ -110,9 +134,11 @@ describe("Memory Service", () => {
         entity: "user-alice",
         content: "I prefer dark mode",
         embedding: new Array(1536).fill(0.1),
-        importance: 0.7,
+        importance: 0.5,
+        category: null,
         tags: ["preference", "ui"],
         memoryType: null,
+        source: null,
         archived: false,
         expiresAt: new Date(Date.now() + 86400000),
         createdAt: new Date(),
@@ -147,6 +173,50 @@ describe("Memory Service", () => {
     });
   });
 
+  describe("storeSmartMemory", () => {
+    it("should extract facts and store them", async () => {
+      // No conflicting memories found
+      mockPool.query.mockResolvedValue({ rows: [] });
+
+      const mockInsert = {
+        values: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([
+            {
+              id: "smart-1",
+              namespace: "agent-1",
+              entity: "user-alice",
+              content: "Likes TypeScript",
+              embedding: new Array(1536).fill(0.1),
+              importance: 0.7,
+              category: "preference",
+              tags: [],
+              memoryType: null,
+              source: null,
+              archived: false,
+              expiresAt: null,
+              createdAt: new Date(),
+              lastAccessed: new Date(),
+              metadata: {},
+            },
+          ]),
+        }),
+      };
+
+      mockDb.insert.mockReturnValue(mockInsert);
+
+      const result = await storeSmartMemory(
+        deps,
+        "agent-1",
+        "user-alice",
+        "I like TypeScript",
+      );
+
+      expect(result.memories).toHaveLength(1);
+      expect(result.memories[0]!.event).toBe("ADD");
+      expect(result.skipped).toBe(0);
+    });
+  });
+
   describe("storeMemories (batch)", () => {
     it("should store multiple memories in batch", async () => {
       const mockResults = [
@@ -156,7 +226,7 @@ describe("Memory Service", () => {
           entity: "user-alice",
           content: "Memory 1",
           embedding: new Array(1536).fill(0.1),
-          importance: 0.7,
+          importance: 0.5,
           tags: ["a"],
         },
         {
@@ -165,7 +235,7 @@ describe("Memory Service", () => {
           entity: "user-alice",
           content: "Memory 2",
           embedding: new Array(1536).fill(0.1),
-          importance: 0.7,
+          importance: 0.5,
           tags: ["b"],
         },
       ];
@@ -228,8 +298,22 @@ describe("Memory Service", () => {
   });
 
   describe("deleteMemory", () => {
-    it("should delete a memory by id", async () => {
+    it("should delete a memory by id and log event", async () => {
+      const mockMemory = {
+        id: "test-uuid",
+        namespace: "agent-1",
+        entity: "user-alice",
+        content: "Some content",
+      };
+
+      mockDb.query.memories.findFirst.mockResolvedValue(mockMemory);
+
+      const mockInsert = {
+        values: vi.fn().mockResolvedValue(undefined),
+      };
       const mockWhere = vi.fn().mockResolvedValue(undefined);
+
+      mockDb.insert.mockReturnValue(mockInsert);
       mockDb.delete.mockReturnValue({ where: mockWhere });
 
       await deleteMemory(deps, "test-uuid");

@@ -8,6 +8,7 @@ export type {
   RecallOptions,
   Memory,
   RetrievedMemory,
+  StoreResult,
   BatchStoreResult,
   DeleteResult,
   HealthResult,

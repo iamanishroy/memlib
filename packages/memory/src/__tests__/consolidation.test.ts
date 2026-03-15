@@ -59,6 +59,7 @@ describe("Consolidation Service", () => {
     expect(result).toHaveLength(1);
     expect(result[0]!.namespace).toBe("agent-1");
     expect(result[0]!.entity).toBe("user-alice");
+    expect(result[0]!.category).toBeNull();
     expect(result[0]!.originalCount).toBe(2);
     expect(result[0]!.summary).toBeDefined();
     expect(result[0]!.archivedIds).toEqual(["1", "2"]);

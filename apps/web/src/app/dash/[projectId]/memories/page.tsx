@@ -46,10 +46,13 @@ interface EntityItem {
 interface MemoryRow {
   id: string;
   namespace: string;
+  entity: string;
   content: string;
   importance: number;
+  category: string | null;
   tags: string[] | null;
   memory_type: string | null;
+  source: string | null;
   archived: boolean;
   expires_at: string | null;
   created_at: string;
@@ -774,6 +777,33 @@ export default function MemoriesPage() {
                         {selectedMemory.memory_type ?? "—"}
                       </Badge>
                     </div>
+
+                    {/* Category */}
+                    {selectedMemory.category && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">
+                          Category
+                        </p>
+                        <Badge
+                          variant="outline"
+                          className="bg-violet-500/10 text-violet-700 dark:text-violet-400 border-0 text-xs"
+                        >
+                          {selectedMemory.category}
+                        </Badge>
+                      </div>
+                    )}
+
+                    {/* Source */}
+                    {selectedMemory.source && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">
+                          Source
+                        </p>
+                        <span className="text-xs text-foreground">
+                          {selectedMemory.source}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Created */}
                     <div>

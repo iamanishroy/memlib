@@ -49,6 +49,7 @@ interface EntityItem {
 interface RecallResult {
   id: string;
   content: string;
+  category: string | null;
   tags: string[] | null;
   metadata: Record<string, unknown> | null;
   similarity: number;
@@ -550,6 +551,11 @@ export default function HomePage() {
                           <span>
                             Importance: {(r.importance * 100).toFixed(0)}%
                           </span>
+                          {r.category && (
+                            <span className="rounded-full bg-violet-500/10 text-violet-700 dark:text-violet-400 px-1.5 py-0.5 text-[10px] font-medium">
+                              {r.category}
+                            </span>
+                          )}
                           {r.tags && r.tags.length > 0 && (
                             <span className="flex items-center gap-1">
                               <Hash className="size-3" />

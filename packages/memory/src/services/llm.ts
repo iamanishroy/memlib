@@ -27,7 +27,7 @@ async function geminiText(
     },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 256 },
+      generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
     }),
   });
 
@@ -57,7 +57,7 @@ async function openaiText(
       model,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.1,
-      max_tokens: 256,
+      max_tokens: 1024,
     }),
   });
 
@@ -88,7 +88,7 @@ async function anthropicText(
       model,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.1,
-      max_tokens: 256,
+      max_tokens: 1024,
     }),
   });
 

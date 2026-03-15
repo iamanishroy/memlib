@@ -7,6 +7,7 @@ import type {
   RecallOptions,
   Memory,
   RetrievedMemory,
+  StoreResult,
   BatchStoreResult,
   DeleteResult,
   HealthResult,
@@ -104,14 +105,16 @@ export class MemZ {
   /**
    * Store a single memory.
    */
-  async store(options: StoreOptions): Promise<Memory> {
-    return this._request<Memory>("POST", "/memory", {
+  async store(options: StoreOptions): Promise<StoreResult> {
+    return this._request<StoreResult>("POST", "/memory", {
       body: {
         namespace: this.ns(options.namespace),
         entity: this.ent(options.entity),
         content: options.content,
+        infer: options.infer,
         tags: options.tags,
         metadata: options.metadata,
+        source: options.source,
         ttl: options.ttl,
       },
     });
@@ -160,6 +163,7 @@ export class MemZ {
         namespace: this.ns(options.namespace),
         entity: this.ent(options.entity),
         query: options.query,
+        category: options.category,
         limit: options.limit,
         tags: options.tags,
         minImportance: options.minImportance,

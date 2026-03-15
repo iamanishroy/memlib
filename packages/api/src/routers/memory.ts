@@ -6,9 +6,6 @@ import { createMemoryService, type MemoryService } from "@memz/memory";
 const { Client } = pg;
 
 // ─── Service Factory ─────────────────────────────────────────────
-// Cloudflare Workers are stateless — create a fresh service per
-// request and close it after. Use ephemeral pg.Client for the
-// project lookup to avoid Pool hangs.
 
 async function getMemoryService(
   projectId: string,
@@ -58,8 +55,8 @@ async function withService<T>(
 }
 
 // ─── Permission Levels ───────────────────────────────────────────
-//   1 = Read          → list, recall, health
-//   2 = Read & Write  → store, batchStore
+//   1 = Read          → list, recall, health, events
+//   2 = Read & Write  → store, smartStore, batchStore
 //   3 = Admin         → delete, consolidate, migrate
 
 // ─── Memory Router ───────────────────────────────────────────────
@@ -79,7 +76,7 @@ export const memoryRouter = {
       );
     }),
 
-  /** POST /v1/memory — store a single memory */
+  /** POST /v1/memory — store a single memory (raw or smart) */
   store: apiKeyProcedure(2)
     .route({ method: "POST", path: "/" })
     .input(
@@ -87,8 +84,10 @@ export const memoryRouter = {
         namespace: z.string(),
         entity: z.string(),
         content: z.string(),
+        infer: z.boolean().optional().default(true),
         tags: z.array(z.string()).optional(),
         metadata: z.record(z.string(), z.unknown()).optional(),
+        source: z.string().optional(),
         ttl: z.number().optional(),
       }),
     )
@@ -97,16 +96,31 @@ export const memoryRouter = {
         context.projectId,
         (context as any).databaseUrl,
         async (memory) => {
-          return memory.store(input.namespace, input.entity, input.content, {
-            tags: input.tags,
-            metadata: input.metadata,
-            ttl: input.ttl,
-          });
+          if (input.infer) {
+            return memory.smartStore(input.namespace, input.entity, input.content, {
+              tags: input.tags,
+              metadata: input.metadata,
+              source: input.source,
+              ttl: input.ttl,
+            });
+          } else {
+            const result = await memory.store(input.namespace, input.entity, input.content, {
+              tags: input.tags,
+              metadata: input.metadata,
+              source: input.source,
+              ttl: input.ttl,
+            });
+            return {
+              memories: [{ ...result, event: "ADD" }],
+              skipped: 0,
+              conflicts: 0,
+            };
+          }
         },
       );
     }),
 
-  /** POST /v1/memory/batch — batch store memories */
+  /** POST /v1/memory/batch — batch store memories (raw, no inference) */
   batchStore: apiKeyProcedure(2)
     .route({ method: "POST", path: "/batch" })
     .input(
@@ -185,6 +199,7 @@ export const memoryRouter = {
         namespace: z.string(),
         entity: z.string(),
         query: z.string(),
+        category: z.string().optional(),
         limit: z.number().optional(),
         tags: z.array(z.string()).optional(),
         minImportance: z.number().optional(),
@@ -196,6 +211,7 @@ export const memoryRouter = {
         (context as any).databaseUrl,
         async (memory) => {
           return memory.recall(input.namespace, input.entity, input.query, {
+            category: input.category,
             limit: input.limit,
             tags: input.tags,
             minImportance: input.minImportance,
@@ -224,6 +240,26 @@ export const memoryRouter = {
             consolidated: results.length,
             results,
           };
+        },
+      );
+    }),
+
+  /** GET /v1/memory/events — get audit trail */
+  events: apiKeyProcedure(1)
+    .route({ method: "GET", path: "/events" })
+    .input(
+      z.object({
+        namespace: z.string(),
+        memoryId: z.string().uuid().optional(),
+        limit: z.number().optional(),
+      }),
+    )
+    .handler(async ({ input, context }) => {
+      return withService(
+        context.projectId,
+        (context as any).databaseUrl,
+        async (memory) => {
+          return memory.events(input.namespace, input.memoryId, input.limit);
         },
       );
     }),

@@ -3,6 +3,7 @@ import type { MemoryDeps } from "../config";
 export interface StaleMemoryGroup {
   namespace: string;
   entity: string;
+  category: string | null;
   memories: {
     id: string;
     content: string;
@@ -14,6 +15,7 @@ export interface StaleMemoryGroup {
 export interface ConsolidationResult {
   namespace: string;
   entity: string;
+  category: string | null;
   originalCount: number;
   summary: string;
   archivedIds: string[];
@@ -21,15 +23,15 @@ export interface ConsolidationResult {
 
 const SUMMARIZE_PROMPT = `You are a memory consolidation system for an AI assistant.
 
-Given the following list of older memories, create a single concise summary that captures all the important information. Preserve key facts, preferences, and details.
+Given the following list of older memories, create a single concise summary that captures all the important information. Preserve key facts, preferences, and details. Do not lose any important specifics.
 
 Memories:
 `;
 
 /**
- * Finds non-archived memories older than `ageDays`, summarizes each
- * (namespace, entity) group via LLM, stores a condensed memory, and
- * archives the originals.
+ * Finds non-archived memories older than `ageDays`, groups them by
+ * (namespace, entity, category), summarizes each group via LLM,
+ * stores a condensed memory, and archives the originals.
  */
 export async function consolidateMemories(
   deps: Pick<MemoryDeps, "pool" | "generateEmbedding" | "generateText">,
@@ -38,12 +40,12 @@ export async function consolidateMemories(
 ): Promise<ConsolidationResult[]> {
   const result = await deps.pool.query(
     `
-    SELECT id, namespace, entity, content, created_at, importance
+    SELECT id, namespace, entity, category, content, created_at, importance
     FROM memories
     WHERE created_at < NOW() - make_interval(days => $1)
       AND archived = false
       AND (expires_at IS NULL OR expires_at > NOW())
-    ORDER BY namespace, entity, created_at ASC
+    ORDER BY namespace, entity, category, created_at ASC
     LIMIT $2
     `,
     [ageDays, limit],
@@ -51,14 +53,20 @@ export async function consolidateMemories(
 
   if (result.rows.length === 0) return [];
 
-  // Group by (namespace, entity)
+  // Group by (namespace, entity, category) for smarter consolidation
+  const groupKey = (row: any) =>
+    `${row.namespace}|||${row.entity}|||${row.category ?? ""}`;
+
   const groups = new Map<string, StaleMemoryGroup>();
   for (const row of result.rows) {
-    const ns = row.namespace as string;
-    const ent = row.entity as string;
-    const key = `${ns}::${ent}`;
+    const key = groupKey(row);
     if (!groups.has(key)) {
-      groups.set(key, { namespace: ns, entity: ent, memories: [] });
+      groups.set(key, {
+        namespace: row.namespace,
+        entity: row.entity,
+        category: row.category ?? null,
+        memories: [],
+      });
     }
     groups.get(key)!.memories.push({
       id: row.id,
@@ -86,12 +94,13 @@ export async function consolidateMemories(
 
       await deps.pool.query(
         `
-        INSERT INTO memories (namespace, entity, content, embedding, importance, metadata)
-        VALUES ($1, $2, $3, $4::vector, $5, $6)
+        INSERT INTO memories (namespace, entity, category, content, embedding, importance, metadata)
+        VALUES ($1, $2, $3, $4, $5::vector, $6, $7)
         `,
         [
           group.namespace,
           group.entity,
+          group.category,
           summary,
           `[${embedding.join(",")}]`,
           maxImportance,
@@ -112,6 +121,7 @@ export async function consolidateMemories(
       results.push({
         namespace: group.namespace,
         entity: group.entity,
+        category: group.category,
         originalCount: group.memories.length,
         summary,
         archivedIds: ids,

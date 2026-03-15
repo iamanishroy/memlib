@@ -117,8 +117,8 @@ export async function GET(
 
       const result = await projectPool.query(
         `
-        SELECT id, namespace, entity, content, importance, tags, memory_type,
-               archived, expires_at, created_at, last_accessed, metadata
+        SELECT id, namespace, entity, content, importance, category, tags, memory_type,
+               source, archived, expires_at, created_at, last_accessed, metadata
         FROM memories
         WHERE ${whereClause}
         ORDER BY created_at DESC
@@ -147,8 +147,8 @@ export async function GET(
 
       const result = await projectPool.query(
         `
-        SELECT id, namespace, entity, content, importance, tags, memory_type,
-               archived, expires_at, created_at, last_accessed, metadata
+        SELECT id, namespace, entity, content, importance, category, tags, memory_type,
+               source, archived, expires_at, created_at, last_accessed, metadata
         FROM memories WHERE id = $1
         `,
         [memoryId],
@@ -350,7 +350,7 @@ export async function POST(
           { status: 400 },
         );
       }
-      const memory = await memoryService.store(
+      const result = await memoryService.smartStore(
         body.namespace,
         body.entity,
         body.content,
@@ -359,7 +359,7 @@ export async function POST(
           metadata: body.metadata,
         },
       );
-      return Response.json(memory);
+      return Response.json(result);
     }
   } finally {
     await memoryService.close();

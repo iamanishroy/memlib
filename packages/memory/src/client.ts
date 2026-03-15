@@ -6,10 +6,14 @@ import { createEmbeddingFn } from "./services/embedding";
 import { createTextFn } from "./services/llm";
 import {
   storeMemory as _storeMemory,
+  storeSmartMemory as _storeSmartMemory,
   storeMemories as _storeMemories,
   getMemories as _getMemories,
   deleteMemory as _deleteMemory,
+  getMemoryEvents as _getMemoryEvents,
   type StoreMemoryOptions,
+  type StoreSmartOptions,
+  type StoreResult,
 } from "./services/memory";
 import {
   retrieveMemories as _retrieveMemories,
@@ -17,7 +21,7 @@ import {
 } from "./services/retrieval";
 import { consolidateMemories as _consolidateMemories } from "./services/consolidation";
 
-import type { Memory } from "./db/schema";
+import type { Memory, MemoryEvent } from "./db/schema";
 import type { RetrievedMemory } from "./services/retrieval";
 import type { ConsolidationResult } from "./services/consolidation";
 
@@ -34,7 +38,10 @@ function stripEmbedding<T extends { embedding?: unknown }>(
 }
 
 export interface MemoryService {
-  /** Store a single memory */
+  /**
+   * Store a single memory (raw, no inference).
+   * Deduplicates by cosine similarity > 0.95.
+   */
   store(
     namespace: string,
     entity: string,
@@ -42,7 +49,18 @@ export interface MemoryService {
     options?: StoreMemoryOptions,
   ): Promise<SafeMemory & { deduplicated?: boolean }>;
 
-  /** Batch store memories */
+  /**
+   * Smart store — extracts facts via LLM, deduplicates with tiered thresholds,
+   * resolves conflicts, and logs all events.
+   */
+  smartStore(
+    namespace: string,
+    entity: string,
+    content: string,
+    options?: StoreSmartOptions,
+  ): Promise<StoreResult>;
+
+  /** Batch store memories (raw, no inference) */
   batchStore(
     namespace: string,
     entity: string,
@@ -55,9 +73,13 @@ export interface MemoryService {
   ): Promise<SafeMemory[]>;
 
   /** List memories in a namespace, optionally filtered by entity */
-  list(namespace: string, entity?: string, limit?: number): Promise<SafeMemory[]>;
+  list(
+    namespace: string,
+    entity?: string,
+    limit?: number,
+  ): Promise<SafeMemory[]>;
 
-  /** Delete a memory by ID */
+  /** Delete a memory by ID (with audit trail logging) */
   delete(id: string): Promise<void>;
 
   /** Semantic recall with hybrid scoring, scoped to namespace + entity */
@@ -68,8 +90,18 @@ export interface MemoryService {
     options?: RecallOptions | number,
   ): Promise<RetrievedMemory[]>;
 
-  /** Consolidate old memories */
-  consolidate(ageDays?: number, limit?: number): Promise<ConsolidationResult[]>;
+  /** Consolidate old memories (category-aware grouping) */
+  consolidate(
+    ageDays?: number,
+    limit?: number,
+  ): Promise<ConsolidationResult[]>;
+
+  /** Get audit trail events for a namespace */
+  events(
+    namespace: string,
+    memoryId?: string,
+    limit?: number,
+  ): Promise<MemoryEvent[]>;
 
   /** Run migrations to set up the memories table + pgvector */
   migrate(): Promise<void>;
@@ -99,8 +131,18 @@ export function createMemoryService(config: MemoryConfig): MemoryService {
 
   return {
     store: async (namespace, entity, content, options) => {
-      const result = await _storeMemory(deps, namespace, entity, content, options);
+      const result = await _storeMemory(
+        deps,
+        namespace,
+        entity,
+        content,
+        options,
+      );
       return stripEmbedding(result);
+    },
+
+    smartStore: async (namespace, entity, content, options) => {
+      return _storeSmartMemory(deps, namespace, entity, content, options);
     },
 
     batchStore: async (namespace, entity, items) => {
@@ -118,7 +160,11 @@ export function createMemoryService(config: MemoryConfig): MemoryService {
     recall: (namespace, entity, query, options) =>
       _retrieveMemories(deps, namespace, entity, query, options),
 
-    consolidate: (ageDays, limit) => _consolidateMemories(deps, ageDays, limit),
+    consolidate: (ageDays, limit) =>
+      _consolidateMemories(deps, ageDays, limit),
+
+    events: (namespace, memoryId, limit) =>
+      _getMemoryEvents(deps, namespace, memoryId, limit),
 
     async migrate() {
       // Enable pgvector extension
@@ -133,8 +179,10 @@ export function createMemoryService(config: MemoryConfig): MemoryService {
           content TEXT NOT NULL,
           embedding vector(${config.embedding.dimensions ?? 1536}),
           importance REAL DEFAULT 0.5,
+          category TEXT,
           tags TEXT[] DEFAULT '{}',
           memory_type TEXT,
+          source TEXT,
           archived BOOLEAN DEFAULT false,
           expires_at TIMESTAMP,
           created_at TIMESTAMP DEFAULT NOW(),
@@ -143,16 +191,51 @@ export function createMemoryService(config: MemoryConfig): MemoryService {
         )
       `);
 
-      // Primary access pattern: namespace + entity + recent (partial, skip archived)
+      // Create memory_events table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS memory_events (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          memory_id UUID NOT NULL,
+          namespace TEXT NOT NULL,
+          entity TEXT,
+          event TEXT NOT NULL,
+          old_content TEXT,
+          new_content TEXT,
+          merged_from_id UUID,
+          reason TEXT,
+          created_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+
+      // Indexes
       await pool.query(`
         CREATE INDEX IF NOT EXISTS idx_memories_ns_entity_created
         ON memories (namespace, entity, created_at DESC)
       `);
-
-      // Consolidation: find old unarchived memories
       await pool.query(`
         CREATE INDEX IF NOT EXISTS idx_memories_archived_created
         ON memories (archived, created_at)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_memories_category
+        ON memories (category)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_memory_events_memory_id
+        ON memory_events (memory_id)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_memory_events_namespace
+        ON memory_events (namespace)
+      `);
+
+      // Add new columns if they don't exist (safe for existing tables)
+      await pool.query(`
+        DO $$ BEGIN
+          ALTER TABLE memories ADD COLUMN IF NOT EXISTS category TEXT;
+          ALTER TABLE memories ADD COLUMN IF NOT EXISTS source TEXT;
+        EXCEPTION WHEN OTHERS THEN NULL;
+        END $$;
       `);
 
       console.log("✅ Memory tables migrated successfully");

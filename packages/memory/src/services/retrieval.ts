@@ -3,6 +3,7 @@ import type { MemoryDeps } from "../config";
 export interface RetrievedMemory {
   id: string;
   content: string;
+  category: string | null;
   tags: string[] | null;
   metadata: Record<string, unknown> | null;
   similarity: number;
@@ -12,6 +13,8 @@ export interface RetrievedMemory {
 }
 
 export interface RecallOptions {
+  /** Filter by category */
+  category?: string;
   /** Filter by tags — returns memories that have ANY of these tags */
   tags?: string[];
   /** Minimum importance threshold (0.0–1.0) */
@@ -24,6 +27,7 @@ export interface RecallOptions {
  *   score = 0.6 * similarity + 0.2 * recency + 0.2 * importance
  *
  * Scoped to a specific namespace + entity.
+ * Supports optional category, tag, and importance filters.
  */
 export async function retrieveMemories(
   deps: Pick<MemoryDeps, "pool" | "generateEmbedding">,
@@ -34,7 +38,7 @@ export async function retrieveMemories(
 ): Promise<RetrievedMemory[]> {
   const opts: RecallOptions =
     typeof options === "number" ? { limit: options } : options;
-  const { tags, minImportance, limit = 10 } = opts;
+  const { category, tags, minImportance, limit = 10 } = opts;
 
   const embedding = await deps.generateEmbedding(query);
 
@@ -45,6 +49,11 @@ export async function retrieveMemories(
     "(expires_at IS NULL OR expires_at > NOW())",
   ];
   const params: any[] = [`[${embedding.join(",")}]`, namespace, entity];
+
+  if (category) {
+    params.push(category);
+    conditions.push(`category = $${params.length}`);
+  }
 
   if (tags && tags.length > 0) {
     params.push(tags);
@@ -62,6 +71,7 @@ export async function retrieveMemories(
     SELECT
       id,
       content,
+      category,
       tags,
       metadata,
       importance,
@@ -93,6 +103,7 @@ export async function retrieveMemories(
       return {
         id: row.id,
         content: row.content,
+        category: row.category,
         tags: row.tags,
         metadata: row.metadata,
         similarity,

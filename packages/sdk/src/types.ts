@@ -20,10 +20,14 @@ export interface StoreOptions {
   namespace?: string;
   /** Entity identifier (e.g. user ID, session ID) */
   entity?: string;
+  /** If true (default), use smart store with LLM fact extraction. If false, raw store. */
+  infer?: boolean;
   /** Optional tags for categorisation */
   tags?: string[];
   /** Optional key-value metadata */
   metadata?: Record<string, unknown>;
+  /** Optional source identifier (e.g. "conversation", "api") */
+  source?: string;
   /** Optional time-to-live in seconds */
   ttl?: number;
 }
@@ -58,6 +62,8 @@ export interface RecallOptions {
   namespace?: string;
   /** Entity identifier */
   entity?: string;
+  /** Filter by category (e.g. "preference", "personal", "professional") */
+  category?: string;
   /** Maximum number of results */
   limit?: number;
   /** Filter by tags */
@@ -73,9 +79,11 @@ export interface Memory {
   namespace: string;
   entity: string;
   content: string;
+  category: string | null;
   tags: string[] | null;
   metadata: Record<string, unknown> | null;
   importance: number | null;
+  source: string | null;
   createdAt: string;
   lastAccessed: string | null;
   expiresAt: string | null;
@@ -85,12 +93,19 @@ export interface Memory {
 export interface RetrievedMemory {
   id: string;
   content: string;
+  category: string | null;
   tags: string[] | null;
   metadata: Record<string, unknown> | null;
   importance: number;
   similarity: number;
   recency: number;
   score: number;
+}
+
+export interface StoreResult {
+  memories: (Memory & { event: string })[];
+  skipped: number;
+  conflicts: number;
 }
 
 export interface BatchStoreResult {
