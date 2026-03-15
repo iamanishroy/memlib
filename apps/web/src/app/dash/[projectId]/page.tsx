@@ -304,11 +304,7 @@ export default function HomePage() {
                     : "border-border/50 bg-muted/30 hover:bg-muted/50 hover:border-border",
                 )}
               >
-                {activeTab === "recall" && (
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium text-primary-foreground">
-                    Active
-                  </span>
-                )}
+
                 <div
                   className={cn(
                     "flex items-center justify-center rounded-md p-2",
@@ -348,11 +344,7 @@ export default function HomePage() {
                     : "border-border/50 bg-muted/30 hover:bg-muted/50 hover:border-border",
                 )}
               >
-                {activeTab === "store" && (
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-medium text-white">
-                    Active
-                  </span>
-                )}
+
                 <div
                   className={cn(
                     "flex items-center justify-center rounded-md p-2",

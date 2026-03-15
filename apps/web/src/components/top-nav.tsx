@@ -40,8 +40,10 @@ export function TopNav() {
       <div className="flex h-14 items-center gap-4 px-4">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 shrink-0">
-          <Logo className="h-5 w-5" />
-          <span className="font-semibold text-sm hidden sm:inline">memz</span>
+          <Logo className="h-5 w-5 text-primary" />
+          <span className="font-semibold text-sm hidden sm:inline">
+            MemZ
+          </span>
         </Link>
 
         {/* Divider */}
@@ -71,9 +73,9 @@ export function TopNav() {
               >
                 <Icon className="size-4" />
                 <span className="hidden md:inline">{tab.label}</span>
-                {active && (
+                {/* {active && (
                   <span className="absolute -bottom-[calc(0.5rem+1px)] left-3 right-3 h-[2px] rounded-full bg-foreground" />
-                )}
+                )} */}
               </Link>
             );
           })}

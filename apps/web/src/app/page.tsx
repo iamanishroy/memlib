@@ -8,7 +8,7 @@ export default function Home() {
         <div className="flex items-center justify-center gap-3">
           <Logo className="h-14 w-14 sm:h-16 sm:w-16" />
           <h1 className="text-5xl font-bold tracking-tight sm:text-6xl">
-            memz
+            MemZ
           </h1>
         </div>
         <p className="text-xl text-muted-foreground leading-relaxed">

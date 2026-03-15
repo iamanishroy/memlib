@@ -44,7 +44,7 @@ export default function LoginForm() {
         <div className="sm:mx-auto sm:w-full sm:max-w-sm">
           <div className="flex flex-col items-center gap-2 mb-8">
             <Logo className="h-10 w-10" />
-            <span className="text-xl font-semibold text-foreground">memz</span>
+            <span className="text-xl font-semibold text-foreground">MemZ</span>
           </div>
 
           <h2 className="text-balance text-center text-base text-muted-foreground mb-6">
