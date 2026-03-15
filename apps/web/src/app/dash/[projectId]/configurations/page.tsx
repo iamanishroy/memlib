@@ -6,7 +6,11 @@ import { authClient } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useProject } from "../layout";
 import { cn } from "@/lib/utils";
-import { GeminiIcon, OpenAIIcon, AnthropicIcon } from "@/components/onboard/icons";
+import {
+  GeminiIcon,
+  OpenAIIcon,
+  AnthropicIcon,
+} from "@/components/onboard/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,8 +28,8 @@ import {
 import {
   AlertTriangle,
   Brain,
+  BrainCircuit,
   Code,
-  Key,
   Loader2,
   Save,
   Settings,
@@ -50,7 +54,7 @@ interface ProjectConfig {
 
 const sections = [
   { id: "general", label: "General", icon: Settings },
-  { id: "providers", label: "LLM Providers", icon: Key },
+  { id: "providers", label: "LLM Providers", icon: BrainCircuit },
   { id: "prompts", label: "Prompts", icon: Code },
   { id: "consolidation", label: "Consolidation", icon: Zap },
   { id: "danger", label: "Danger Zone", icon: AlertTriangle },
@@ -100,10 +104,7 @@ export default function ConfigurationsPage() {
   }, [isPending, session, router]);
 
   // ── React Query: project config ────────────────────────────────
-  const {
-    data: config = null,
-    isLoading: loading,
-  } = useQuery({
+  const { data: config = null, isLoading: loading } = useQuery({
     queryKey: ["project-config", projectId],
     queryFn: () => fetchProjectConfig(projectId),
     enabled: !!session,
@@ -111,7 +112,9 @@ export default function ConfigurationsPage() {
   });
 
   // Local editable state derived from query data
-  const [editableConfig, setEditableConfig] = useState<ProjectConfig | null>(null);
+  const [editableConfig, setEditableConfig] = useState<ProjectConfig | null>(
+    null,
+  );
   useEffect(() => {
     if (config && !editableConfig) setEditableConfig(config);
   }, [config, editableConfig]);
@@ -177,7 +180,8 @@ export default function ConfigurationsPage() {
 
   // ── Field updater ─────────────────────────────────────────────
   const update = (field: keyof ProjectConfig, value: string) => {
-    if (editableConfig) setEditableConfig({ ...editableConfig, [field]: value });
+    if (editableConfig)
+      setEditableConfig({ ...editableConfig, [field]: value });
   };
 
   return (
@@ -226,7 +230,8 @@ export default function ConfigurationsPage() {
                   active
                     ? "bg-muted text-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-                  s.id === "danger" && "text-destructive hover:text-destructive",
+                  s.id === "danger" &&
+                    "text-destructive hover:text-destructive",
                 )}
               >
                 <Icon className="size-4" />
@@ -267,7 +272,9 @@ export default function ConfigurationsPage() {
                           id="desc"
                           placeholder="Optional project description"
                           value={editableConfig.description ?? ""}
-                          onChange={(e) => update("description", e.target.value)}
+                          onChange={(e) =>
+                            update("description", e.target.value)
+                          }
                         />
                       </div>
                       <div className="space-y-2">
@@ -318,28 +325,48 @@ export default function ConfigurationsPage() {
                           <Label>Provider</Label>
                           {(() => {
                             const embeddingProviders = [
-                              { label: "Gemini", value: "gemini", icon: <GeminiIcon /> },
-                              { label: "OpenAI", value: "openai", icon: <OpenAIIcon /> },
+                              {
+                                label: "Gemini",
+                                value: "gemini",
+                                icon: <GeminiIcon />,
+                              },
+                              {
+                                label: "OpenAI",
+                                value: "openai",
+                                icon: <OpenAIIcon />,
+                              },
                             ];
-                            const selected = embeddingProviders.find((p) => p.value === editableConfig.embeddingProvider) ?? null;
+                            const selected =
+                              embeddingProviders.find(
+                                (p) =>
+                                  p.value === editableConfig.embeddingProvider,
+                              ) ?? null;
                             return (
                               <Select
                                 value={selected}
                                 onValueChange={(item) => {
-                                  if (item) update("embeddingProvider", item.value);
+                                  if (item)
+                                    update("embeddingProvider", item.value);
                                 }}
                                 items={embeddingProviders}
                               >
                                 <SelectTrigger className="w-full">
                                   <SelectValue>
-                                    {(item: { label: string; icon: React.ReactNode } | null) =>
+                                    {(
+                                      item: {
+                                        label: string;
+                                        icon: React.ReactNode;
+                                      } | null,
+                                    ) =>
                                       item ? (
                                         <span className="flex items-center gap-2">
                                           {item.icon}
                                           {item.label}
                                         </span>
                                       ) : (
-                                        <span className="text-muted-foreground">Select provider</span>
+                                        <span className="text-muted-foreground">
+                                          Select provider
+                                        </span>
                                       )
                                     }
                                   </SelectValue>
@@ -379,11 +406,26 @@ export default function ConfigurationsPage() {
                           <Label>Provider</Label>
                           {(() => {
                             const llmProviders = [
-                              { label: "Gemini", value: "gemini", icon: <GeminiIcon /> },
-                              { label: "OpenAI", value: "openai", icon: <OpenAIIcon /> },
-                              { label: "Anthropic", value: "anthropic", icon: <AnthropicIcon /> },
+                              {
+                                label: "Gemini",
+                                value: "gemini",
+                                icon: <GeminiIcon />,
+                              },
+                              {
+                                label: "OpenAI",
+                                value: "openai",
+                                icon: <OpenAIIcon />,
+                              },
+                              {
+                                label: "Anthropic",
+                                value: "anthropic",
+                                icon: <AnthropicIcon />,
+                              },
                             ];
-                            const selected = llmProviders.find((p) => p.value === editableConfig.llmProvider) ?? null;
+                            const selected =
+                              llmProviders.find(
+                                (p) => p.value === editableConfig.llmProvider,
+                              ) ?? null;
                             return (
                               <Select
                                 value={selected}
@@ -394,14 +436,21 @@ export default function ConfigurationsPage() {
                               >
                                 <SelectTrigger className="w-full">
                                   <SelectValue>
-                                    {(item: { label: string; icon: React.ReactNode } | null) =>
+                                    {(
+                                      item: {
+                                        label: string;
+                                        icon: React.ReactNode;
+                                      } | null,
+                                    ) =>
                                       item ? (
                                         <span className="flex items-center gap-2">
                                           {item.icon}
                                           {item.label}
                                         </span>
                                       ) : (
-                                        <span className="text-muted-foreground">Select provider</span>
+                                        <span className="text-muted-foreground">
+                                          Select provider
+                                        </span>
                                       )
                                     }
                                   </SelectValue>
@@ -488,8 +537,8 @@ export default function ConfigurationsPage() {
                   ))}
                   <p className="text-xs text-muted-foreground">
                     These prompts are currently defined in the{" "}
-                    <code className="text-foreground">@memz/memory</code> package.
-                    Per-project prompt customization is coming soon.
+                    <code className="text-foreground">@memz/memory</code>{" "}
+                    package. Per-project prompt customization is coming soon.
                   </p>
                 </>
               )}
@@ -508,8 +557,9 @@ export default function ConfigurationsPage() {
                         <p className="text-xs text-muted-foreground leading-relaxed">
                           The consolidation process finds non-archived memories
                           older than a threshold, groups them by (namespace,
-                          entity), generates an LLM summary for each group, stores
-                          the summary as a new memory, and archives the originals.
+                          entity), generates an LLM summary for each group,
+                          stores the summary as a new memory, and archives the
+                          originals.
                         </p>
                       </div>
                       <div className="h-px bg-border" />
@@ -609,7 +659,9 @@ export default function ConfigurationsPage() {
                       <div className="space-y-2">
                         <Label className="text-xs text-muted-foreground">
                           Type{" "}
-                          <code className="text-foreground">{editableConfig.name}</code>{" "}
+                          <code className="text-foreground">
+                            {editableConfig.name}
+                          </code>{" "}
                           to confirm
                         </Label>
                         <Input
@@ -621,7 +673,9 @@ export default function ConfigurationsPage() {
                       <Button
                         variant="destructive"
                         className="gap-2"
-                        disabled={confirmDelete !== editableConfig.name || deleting}
+                        disabled={
+                          confirmDelete !== editableConfig.name || deleting
+                        }
                         onClick={handleDeleteProject}
                       >
                         {deleting ? (

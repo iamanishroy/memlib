@@ -22,13 +22,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  BadgePlus,
   Database,
   Hash,
   Home,
   Loader2,
   Plus,
   RefreshCw,
-  Search,
+  ScanSearch,
   Sparkles,
   User,
 } from "lucide-react";
@@ -88,10 +89,7 @@ async function fetchNamespacesWithEntityCount(projectId: string) {
   return { namespaces, entityCount: allEnts.size };
 }
 
-async function fetchEntitiesForNamespace(
-  projectId: string,
-  namespace: string,
-) {
+async function fetchEntitiesForNamespace(projectId: string, namespace: string) {
   const res = await fetch(
     `/api/projects/${projectId}/memories?action=entities&namespace=${encodeURIComponent(namespace)}`,
   );
@@ -252,7 +250,9 @@ export default function HomePage() {
                 <span className="flex items-center gap-1.5">
                   <Sparkles className="size-3 text-violet-500" />
                   <span className="font-semibold text-foreground tabular-nums">
-                    {namespaces.reduce((s, n) => s + n.count, 0).toLocaleString()}
+                    {namespaces
+                      .reduce((s, n) => s + n.count, 0)
+                      .toLocaleString()}
                   </span>
                   memories
                 </span>
@@ -304,14 +304,13 @@ export default function HomePage() {
                     : "border-border/50 bg-muted/30 hover:bg-muted/50 hover:border-border",
                 )}
               >
-
                 <div
                   className={cn(
                     "flex items-center justify-center rounded-md p-2",
                     activeTab === "recall" ? "bg-primary/10" : "bg-muted",
                   )}
                 >
-                  <Search
+                  <ScanSearch
                     className={cn(
                       "size-5",
                       activeTab === "recall"
@@ -344,14 +343,13 @@ export default function HomePage() {
                     : "border-border/50 bg-muted/30 hover:bg-muted/50 hover:border-border",
                 )}
               >
-
                 <div
                   className={cn(
                     "flex items-center justify-center rounded-md p-2",
                     activeTab === "store" ? "bg-emerald-500/10" : "bg-muted",
                   )}
                 >
-                  <Plus
+                  <BadgePlus
                     className={cn(
                       "size-5",
                       activeTab === "store"
@@ -389,7 +387,8 @@ export default function HomePage() {
                       value: ns.namespace,
                       count: ns.count,
                     }));
-                    const selectedNsItem = nsItems.find((i) => i.value === selectedNs) ?? null;
+                    const selectedNsItem =
+                      nsItems.find((i) => i.value === selectedNs) ?? null;
                     return (
                       <Select
                         value={selectedNsItem}
@@ -405,11 +404,15 @@ export default function HomePage() {
                                 <span className="flex items-center gap-1.5">
                                   <Database className="size-3.5 text-muted-foreground" />
                                   {item.label}
-                                  <span className="text-muted-foreground">({item.count})</span>
+                                  <span className="text-muted-foreground">
+                                    ({item.count})
+                                  </span>
                                 </span>
                               ) : (
                                 <span className="text-muted-foreground">
-                                  {loadingNs ? "Loading..." : "Select namespace"}
+                                  {loadingNs
+                                    ? "Loading..."
+                                    : "Select namespace"}
                                 </span>
                               )
                             }
@@ -421,7 +424,9 @@ export default function HomePage() {
                               <SelectItem key={item.value} value={item}>
                                 <Database className="size-3.5 text-muted-foreground" />
                                 {item.label}
-                                <span className="text-muted-foreground">({item.count})</span>
+                                <span className="text-muted-foreground">
+                                  ({item.count})
+                                </span>
                               </SelectItem>
                             ))}
                           </SelectGroup>
@@ -436,7 +441,8 @@ export default function HomePage() {
                       value: ent.entity,
                       count: ent.count,
                     }));
-                    const selectedEntItem = entItems.find((i) => i.value === selectedEntity) ?? null;
+                    const selectedEntItem =
+                      entItems.find((i) => i.value === selectedEntity) ?? null;
                     return (
                       <Select
                         value={selectedEntItem}
@@ -456,7 +462,9 @@ export default function HomePage() {
                                 <span className="flex items-center gap-1.5">
                                   <User className="size-3.5 text-muted-foreground" />
                                   {item.label}
-                                  <span className="text-muted-foreground">({item.count})</span>
+                                  <span className="text-muted-foreground">
+                                    ({item.count})
+                                  </span>
                                 </span>
                               ) : (
                                 <span className="text-muted-foreground">
@@ -476,7 +484,9 @@ export default function HomePage() {
                               <SelectItem key={item.value} value={item}>
                                 <User className="size-3.5 text-muted-foreground" />
                                 {item.label}
-                                <span className="text-muted-foreground">({item.count})</span>
+                                <span className="text-muted-foreground">
+                                  ({item.count})
+                                </span>
                               </SelectItem>
                             ))}
                           </SelectGroup>
