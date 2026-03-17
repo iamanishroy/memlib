@@ -1,0 +1,62 @@
+[
+  {
+    "name": "Recall precision",
+    "description": "Top result should match the query topic",
+    "steps": [
+      { "store": "I prefer TypeScript for all my projects", "infer": false },
+      { "store": "I have a golden retriever named Max", "infer": false },
+      { "store": "I work at a startup in Berlin", "infer": false },
+      { "recall": "What programming language does the user like?" }
+    ],
+    "assert": [
+      { "step": 3, "topContains": "TypeScript", "minResults": 1 }
+    ]
+  },
+  {
+    "name": "Recall with category filter",
+    "description": "Category filter should narrow results to the right category",
+    "steps": [
+      { "store": "I love sushi and Japanese food" },
+      { "store": "I work as a backend engineer at Google" },
+      { "recall": "What does the user do?", "category": "professional" }
+    ],
+    "assert": [
+      { "step": 2, "allCategory": "professional" }
+    ]
+  },
+  {
+    "name": "Recall empty namespace",
+    "description": "Recalling from an empty namespace should return zero results gracefully",
+    "steps": [
+      { "recall": "anything" }
+    ],
+    "assert": [
+      { "step": 0, "maxResults": 0 }
+    ]
+  },
+  {
+    "name": "Recall ordering by relevance",
+    "description": "Most relevant memory should rank first, less relevant should rank lower",
+    "steps": [
+      { "store": "I love playing chess on weekends", "infer": false },
+      { "store": "I drive a Tesla Model 3", "infer": false },
+      { "store": "I enjoy board games and strategy games", "infer": false },
+      { "recall": "What games does the user play?" }
+    ],
+    "assert": [
+      { "step": 3, "minResults": 2, "topContainsAny": ["chess", "strategy", "board game"] }
+    ]
+  },
+  {
+    "name": "Recall after contradiction",
+    "description": "After a contradiction, only the latest fact should be recalled",
+    "steps": [
+      { "store": "I love Python" },
+      { "store": "I actually hate Python and prefer Rust" },
+      { "recall": "What does the user think about Python?" }
+    ],
+    "assert": [
+      { "step": 2, "topContainsAny": ["hate", "dislike", "don't like", "not", "prefer", "Rust"], "minResults": 1 }
+    ]
+  }
+]

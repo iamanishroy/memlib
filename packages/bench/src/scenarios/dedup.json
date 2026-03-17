@@ -1,0 +1,47 @@
+[
+  {
+    "name": "Exact duplicate skip",
+    "description": "Storing the exact same content twice should skip the second",
+    "steps": [
+      { "store": "I prefer dark mode in all applications" },
+      { "store": "I prefer dark mode in all applications" }
+    ],
+    "assert": [
+      { "step": 1, "minSkipped": 1 }
+    ]
+  },
+  {
+    "name": "Semantic duplicate skip",
+    "description": "Near-identical rephrasing should be detected as duplicate",
+    "steps": [
+      { "store": "I live in New York City" },
+      { "store": "I reside in NYC" }
+    ],
+    "assert": [
+      { "step": 1, "minSkippedOrConflicts": 1 }
+    ]
+  },
+  {
+    "name": "Synonym duplicate",
+    "description": "Same meaning expressed with synonyms should be caught",
+    "steps": [
+      { "store": "I enjoy playing basketball" },
+      { "store": "I like to play basketball" }
+    ],
+    "assert": [
+      { "step": 1, "minSkippedOrConflicts": 1 }
+    ]
+  },
+  {
+    "name": "Different facts not flagged",
+    "description": "Two genuinely different facts should not be flagged as duplicates",
+    "steps": [
+      { "store": "I love hiking in the mountains" },
+      { "store": "My favorite food is sushi" }
+    ],
+    "assert": [
+      { "step": 0, "minCreated": 1 },
+      { "step": 1, "minCreated": 1, "maxSkipped": 0, "maxConflicts": 0 }
+    ]
+  }
+]

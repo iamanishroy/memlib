@@ -1,0 +1,90 @@
+[
+  {
+    "name": "Contradiction detection",
+    "description": "Directly contradicting statements should trigger conflict resolution",
+    "steps": [
+      { "store": "I love mango" },
+      { "store": "I don't love mango" }
+    ],
+    "assert": [
+      { "step": 1, "minConflicts": 1 }
+    ]
+  },
+  {
+    "name": "Preference update",
+    "description": "Changing a preference should update the existing memory",
+    "steps": [
+      { "store": "My favorite editor is VS Code" },
+      { "store": "I switched to Cursor, it's my favorite editor now" }
+    ],
+    "assert": [
+      { "step": 1, "minConflicts": 1 }
+    ]
+  },
+  {
+    "name": "Location change",
+    "description": "Moving to a new city should update or contradict the old location",
+    "steps": [
+      { "store": "I live in San Francisco" },
+      { "store": "I recently moved to Berlin" }
+    ],
+    "assert": [
+      { "step": 1, "minConflicts": 1 }
+    ]
+  },
+  {
+    "name": "Job change",
+    "description": "Changing employer should update the existing work memory",
+    "steps": [
+      { "store": "I work at Google as a software engineer" },
+      { "store": "I just joined Meta as a tech lead" }
+    ],
+    "assert": [
+      { "step": 1, "minConflicts": 1 }
+    ]
+  },
+  {
+    "name": "Relationship status change",
+    "description": "Relationship changes should update existing memory",
+    "steps": [
+      { "store": "I'm single and enjoying it" },
+      { "store": "I just started dating someone named Alex" }
+    ],
+    "assert": [
+      { "step": 1, "minConflicts": 1 }
+    ]
+  },
+  {
+    "name": "Diet change",
+    "description": "Dietary preference changes should be detected",
+    "steps": [
+      { "store": "I'm a vegetarian" },
+      { "store": "I started eating meat again recently" }
+    ],
+    "assert": [
+      { "step": 1, "minConflicts": 1 }
+    ]
+  },
+  {
+    "name": "Hobby replacement",
+    "description": "Replacing a hobby should be detected as a conflict",
+    "steps": [
+      { "store": "I play tennis every weekend" },
+      { "store": "I quit tennis and now I play pickleball instead" }
+    ],
+    "assert": [
+      { "step": 1, "minConflicts": 1 }
+    ]
+  },
+  {
+    "name": "Numeric update",
+    "description": "Updating numbers (age, years of experience) should be caught",
+    "steps": [
+      { "store": "I have 5 years of experience" },
+      { "store": "I now have 8 years of experience" }
+    ],
+    "assert": [
+      { "step": 1, "minConflicts": 1 }
+    ]
+  }
+]

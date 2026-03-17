@@ -1,0 +1,54 @@
+[
+  {
+    "name": "Single fact extraction",
+    "description": "Extracts a single atomic fact from a simple statement",
+    "steps": [
+      { "store": "I love TypeScript" }
+    ],
+    "assert": [
+      { "step": 0, "minCreated": 1 }
+    ]
+  },
+  {
+    "name": "Multi-fact extraction",
+    "description": "Extracts multiple facts from a compound sentence",
+    "steps": [
+      { "store": "I'm a senior engineer at Google, I use Go and Python daily, and I prefer dark mode in all my editors." }
+    ],
+    "assert": [
+      { "step": 0, "minCreated": 2 }
+    ]
+  },
+  {
+    "name": "Conversational extraction",
+    "description": "Extracts facts from casual conversational text",
+    "steps": [
+      { "store": "Hey, so I just got back from Tokyo. Amazing trip! I tried this ramen place near Shinjuku and it was the best I've ever had. Oh and I finally finished reading Dune." }
+    ],
+    "assert": [
+      { "step": 0, "minCreated": 2 }
+    ]
+  },
+  {
+    "name": "No useful facts",
+    "description": "Generic greeting should produce zero memories",
+    "steps": [
+      { "store": "Hello, how are you doing today?" }
+    ],
+    "assert": [
+      { "step": 0, "maxCreated": 0 }
+    ]
+  },
+  {
+    "name": "Importance scoring",
+    "description": "Medical allergy should get high importance, trivial fact should get low",
+    "steps": [
+      { "store": "I'm severely allergic to peanuts" },
+      { "store": "I had cereal for breakfast" }
+    ],
+    "assert": [
+      { "step": 0, "minCreated": 1 },
+      { "step": 1, "minCreated": 0 }
+    ]
+  }
+]

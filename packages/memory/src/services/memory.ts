@@ -7,7 +7,7 @@ import { eq, and } from "drizzle-orm";
 // ─── Thresholds ───────────────────────────────────────────────────
 
 const EXACT_DUP_THRESHOLD = 0.98; // Only skip truly identical content
-const CONFLICT_THRESHOLD = 0.80; // Catch negation & subtle changes
+const CONFLICT_THRESHOLD = 0.65; // Balance: catches editor/location changes, avoids unrelated topics
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -263,8 +263,7 @@ export async function storeSmartMemory(
         case "MERGE": {
           const mergedContent =
             resolution.mergedContent || conflictEntry.newFact;
-          const mergedEmbedding =
-            await deps.generateEmbedding(mergedContent);
+          const mergedEmbedding = await deps.generateEmbedding(mergedContent);
 
           await deps.pool.query(
             `UPDATE memories SET content = $1, embedding = $2::vector, importance = $3,
@@ -296,8 +295,7 @@ export async function storeSmartMemory(
         case "REPLACE": {
           const replaceContent =
             resolution.mergedContent || conflictEntry.newFact;
-          const replaceEmbedding =
-            await deps.generateEmbedding(replaceContent);
+          const replaceEmbedding = await deps.generateEmbedding(replaceContent);
 
           await deps.pool.query(
             `UPDATE memories SET content = $1, embedding = $2::vector, importance = $3,
@@ -312,24 +310,17 @@ export async function storeSmartMemory(
             ],
           );
 
-          await logEvent(
-            deps,
-            conflictEntry.existingId,
-            namespace,
-            "REPLACE",
-            {
-              entity,
-              oldContent: conflictEntry.existingContent,
-              newContent: replaceContent,
-              reason: resolution.reason,
-            },
-          );
+          await logEvent(deps, conflictEntry.existingId, namespace, "REPLACE", {
+            entity,
+            oldContent: conflictEntry.existingContent,
+            newContent: replaceContent,
+            reason: resolution.reason,
+          });
 
           const replaced = await deps.db.query.memories.findFirst({
             where: eq(memories.id, conflictEntry.existingId),
           });
-          if (replaced)
-            resultMemories.push({ ...replaced, event: "REPLACE" });
+          if (replaced) resultMemories.push({ ...replaced, event: "REPLACE" });
           break;
         }
 
@@ -339,17 +330,11 @@ export async function storeSmartMemory(
             [conflictEntry.existingId],
           );
 
-          await logEvent(
-            deps,
-            conflictEntry.existingId,
-            namespace,
-            "DELETE",
-            {
-              entity,
-              oldContent: conflictEntry.existingContent,
-              reason: `Contradiction: ${resolution.reason}`,
-            },
-          );
+          await logEvent(deps, conflictEntry.existingId, namespace, "DELETE", {
+            entity,
+            oldContent: conflictEntry.existingContent,
+            reason: `Contradiction: ${resolution.reason}`,
+          });
 
           toInsert.push({
             fact: conflictEntry.fact,

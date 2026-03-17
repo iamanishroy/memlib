@@ -65,7 +65,9 @@ export async function retrieveMemories(
     conditions.push(`importance >= $${params.length}`);
   }
 
-  params.push(limit);
+  // Over-fetch to allow hybrid re-ranking to pick the best
+  const fetchLimit = limit * 3;
+  params.push(fetchLimit);
 
   const sql = `
     SELECT
@@ -98,7 +100,7 @@ export async function retrieveMemories(
       const similarity = parseFloat(row.similarity);
       const recency = parseFloat(row.recency);
       const importance = parseFloat(row.importance ?? 0.5);
-      const score = 0.6 * similarity + 0.2 * recency + 0.2 * importance;
+      const score = 0.7 * similarity + 0.1 * recency + 0.2 * importance;
 
       return {
         id: row.id,
@@ -112,5 +114,6 @@ export async function retrieveMemories(
         score,
       };
     })
-    .sort((a: RetrievedMemory, b: RetrievedMemory) => b.score - a.score);
+    .sort((a: RetrievedMemory, b: RetrievedMemory) => b.score - a.score)
+    .slice(0, limit);
 }

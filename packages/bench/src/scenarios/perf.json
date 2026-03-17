@@ -1,0 +1,47 @@
+[
+  {
+    "name": "Smart store latency",
+    "description": "Smart store should complete within 8 seconds",
+    "steps": [
+      { "store": "The user enjoys reading sci-fi novels and plays chess on weekends" }
+    ],
+    "assert": [
+      { "step": 0, "maxDurationMs": 8000 }
+    ]
+  },
+  {
+    "name": "Recall latency",
+    "description": "Recall should complete within 2 seconds",
+    "steps": [
+      { "store": "I like hiking in the mountains", "infer": false },
+      { "recall": "outdoor activities" }
+    ],
+    "assert": [
+      { "step": 1, "maxDurationMs": 2000 }
+    ]
+  },
+  {
+    "name": "Raw store latency",
+    "description": "Raw store (no inference) should complete within 2 seconds",
+    "steps": [
+      { "store": "User prefers Python 3.12", "infer": false }
+    ],
+    "assert": [
+      { "step": 0, "maxDurationMs": 2000 }
+    ]
+  },
+  {
+    "name": "Batch store throughput",
+    "description": "5 sequential raw stores should finish within 8 seconds total",
+    "steps": [
+      { "store": "Fact one: likes coffee", "infer": false },
+      { "store": "Fact two: lives in NYC", "infer": false },
+      { "store": "Fact three: uses Mac", "infer": false },
+      { "store": "Fact four: prefers dark mode", "infer": false },
+      { "store": "Fact five: drives a Tesla", "infer": false }
+    ],
+    "assert": [
+      { "totalDurationMs": 8000 }
+    ]
+  }
+]
