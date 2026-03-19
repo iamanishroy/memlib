@@ -24,6 +24,12 @@ import { consolidateMemories as _consolidateMemories } from "./services/consolid
 import type { Memory, MemoryEvent } from "./db/schema";
 import type { RetrievedMemory } from "./services/retrieval";
 import type { ConsolidationResult } from "./services/consolidation";
+import {
+  prepareContext as _prepareContext,
+  type Message,
+  type PrepareOptions,
+  type PrepareResult,
+} from "./services/synthesis";
 
 const { Pool } = pg;
 
@@ -103,6 +109,19 @@ export interface MemoryService {
     limit?: number,
   ): Promise<MemoryEvent[]>;
 
+  /**
+   * Context-aware memory synthesis.
+   * Reads conversation, generates multi-queries, retrieves relevant memories,
+   * and synthesizes a task-specific briefing paragraph.
+   * 2 LLM calls total.
+   */
+  prepare(
+    namespace: string,
+    entity: string,
+    messages: Message[],
+    options?: PrepareOptions,
+  ): Promise<PrepareResult>;
+
   /** Run migrations to set up the memories table + pgvector */
   migrate(): Promise<void>;
 
@@ -165,6 +184,9 @@ export function createMemoryService(config: MemoryConfig): MemoryService {
 
     events: (namespace, memoryId, limit) =>
       _getMemoryEvents(deps, namespace, memoryId, limit),
+
+    prepare: (namespace, entity, messages, options) =>
+      _prepareContext(deps, namespace, entity, messages, options),
 
     async migrate() {
       // Enable pgvector extension

@@ -36,3 +36,8 @@ export type {
   ConflictResolution,
   ConflictResolutionResult,
 } from "./services/conflict";
+export type {
+  Message,
+  PrepareOptions,
+  PrepareResult,
+} from "./services/synthesis";

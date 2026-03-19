@@ -220,6 +220,38 @@ export const memoryRouter = {
       );
     }),
 
+  /** POST /v1/memory/prepare — context-aware memory synthesis */
+  prepare: apiKeyProcedure(1)
+    .route({ method: "POST", path: "/prepare" })
+    .input(
+      z.object({
+        namespace: z.string(),
+        entity: z.string(),
+        messages: z.array(
+          z.object({
+            role: z.enum(["user", "assistant", "system"]),
+            content: z.string(),
+          }),
+        ),
+        maxCandidates: z.number().optional(),
+        maxTokens: z.number().optional(),
+        category: z.string().optional(),
+      }),
+    )
+    .handler(async ({ input, context }) => {
+      return withService(
+        context.projectId,
+        (context as any).databaseUrl,
+        async (memory) => {
+          return memory.prepare(input.namespace, input.entity, input.messages, {
+            maxCandidates: input.maxCandidates,
+            maxTokens: input.maxTokens,
+            category: input.category,
+          });
+        },
+      );
+    }),
+
   /** POST /v1/memory/consolidate — trigger consolidation */
   consolidate: apiKeyProcedure(3)
     .route({ method: "POST", path: "/consolidate" })
