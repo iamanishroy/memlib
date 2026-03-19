@@ -1,6 +1,6 @@
 {
-  "name": "@anishroy/memz",
-  "version": "0.2.0",
+  "name": "simple-memory",
+  "version": "0.2.1",
   "description": "TypeScript SDK for the MemZ memory API",
   "type": "module",
   "main": "./dist/index.cjs",

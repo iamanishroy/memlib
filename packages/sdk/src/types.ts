@@ -121,3 +121,36 @@ export interface HealthResult {
   status: string;
   [key: string]: unknown;
 }
+
+// ─── Prepare (Context-Aware Synthesis) ────────────────────────────
+
+export interface Message {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
+export interface PrepareOptions {
+  /** Conversation messages for context */
+  messages: Message[];
+  /** Namespace (overrides constructor default) */
+  namespace?: string;
+  /** Entity identifier */
+  entity?: string;
+  /** Max memories to consider (default 20) */
+  maxCandidates?: number;
+  /** Max tokens in the output context */
+  maxTokens?: number;
+  /** Filter by category */
+  category?: string;
+}
+
+export interface PrepareResult {
+  /** Synthesized context paragraph, ready to inject into a system prompt */
+  context: string;
+  /** IDs of memories used in the synthesis */
+  memoriesUsed: string[];
+  /** Number of candidate memories considered */
+  candidatesConsidered: number;
+  /** Estimated token count of the context */
+  tokenCount: number;
+}

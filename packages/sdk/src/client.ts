@@ -5,12 +5,14 @@ import type {
   BatchStoreOptions,
   ListOptions,
   RecallOptions,
+  PrepareOptions,
   Memory,
   RetrievedMemory,
   StoreResult,
   BatchStoreResult,
   DeleteResult,
   HealthResult,
+  PrepareResult,
 } from "./types";
 
 const DEFAULT_BASE_URL = "https://memz-api.anishroy.com";
@@ -167,6 +169,24 @@ export class MemZ {
         limit: options.limit,
         tags: options.tags,
         minImportance: options.minImportance,
+      },
+    });
+  }
+
+  /**
+   * Context-aware memory synthesis.
+   * Reads conversation, retrieves relevant memories, and returns
+   * a synthesized briefing paragraph. 2 LLM calls.
+   */
+  async prepare(options: PrepareOptions): Promise<PrepareResult> {
+    return this._request<PrepareResult>("POST", "/memory/prepare", {
+      body: {
+        namespace: this.ns(options.namespace),
+        entity: this.ent(options.entity),
+        messages: options.messages,
+        maxCandidates: options.maxCandidates,
+        maxTokens: options.maxTokens,
+        category: options.category,
       },
     });
   }
