@@ -5,6 +5,7 @@ import type {
   StepResult,
   StoreStepResult,
   RecallStepResult,
+  PrepareStepResult,
   ScenarioTag,
 } from "./types";
 
@@ -91,6 +92,25 @@ export async function runScenario(
         })),
         raw: results,
       } satisfies RecallStepResult);
+    } else if (step.action === "prepare") {
+      const start = Date.now();
+      const result = await memory.prepare(
+        namespace,
+        step.entity ?? entity,
+        step.messages,
+      );
+      const durationMs = Date.now() - start;
+      totalLlmCalls += 2; // intent + synthesis
+
+      stepResults.push({
+        action: "prepare",
+        durationMs,
+        context: result.context,
+        memoriesUsed: result.memoriesUsed.length,
+        candidatesConsidered: result.candidatesConsidered,
+        tokenCount: result.tokenCount,
+        raw: result,
+      } satisfies PrepareStepResult);
     }
   }
 

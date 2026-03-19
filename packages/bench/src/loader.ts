@@ -8,6 +8,7 @@ import type { Scenario, ScenarioTag, StepResult, Step, Validation } from "./type
 interface JsonStep {
   store?: string;
   recall?: string;
+  prepare?: { role: "user" | "assistant"; content: string }[];
   entity?: string;
   infer?: boolean;
   category?: string;
@@ -40,6 +41,14 @@ interface JsonAssert {
   // ── Performance assertions ──────────────────────────────────
   maxDurationMs?: number;
 
+  // ── Prepare assertions ──────────────────────────────────────
+  /** Check if synthesized context contains this string (case-insensitive) */
+  contextContains?: string;
+  /** Check if synthesized context does NOT contain this string (case-insensitive) */
+  contextNotContains?: string;
+  /** Minimum memories used in synthesis */
+  minMemoriesUsed?: number;
+
   // ── Scenario-level assertions ───────────────────────────────
   totalDurationMs?: number;
 }
@@ -68,6 +77,13 @@ function toStep(json: JsonStep): Step {
       query: json.recall,
       entity: json.entity,
       category: json.category,
+    };
+  }
+  if (json.prepare !== undefined) {
+    return {
+      action: "prepare",
+      messages: json.prepare,
+      entity: json.entity,
     };
   }
   throw new Error(`Invalid step: ${JSON.stringify(json)}`);
@@ -153,6 +169,23 @@ function buildValidator(asserts: JsonAssert[]): (results: StepResult[], totalDur
           if (bad.length > 0) {
             failures.push(`Step ${a.step}: ${bad.length} results have wrong category`);
           }
+        }
+      }
+
+      // ── Prepare assertions ──────────────────────────────────
+      if (r.action === "prepare") {
+        if (a.contextContains !== undefined) {
+          if (!r.context.toLowerCase().includes(a.contextContains.toLowerCase())) {
+            failures.push(`Step ${a.step}: context doesn't contain "${a.contextContains}" — got: "${r.context.slice(0, 100)}..."`);
+          }
+        }
+        if (a.contextNotContains !== undefined) {
+          if (r.context.toLowerCase().includes(a.contextNotContains.toLowerCase())) {
+            failures.push(`Step ${a.step}: context should NOT contain "${a.contextNotContains}"`);
+          }
+        }
+        if (a.minMemoriesUsed !== undefined && r.memoriesUsed < a.minMemoriesUsed) {
+          failures.push(`Step ${a.step}: used ${r.memoriesUsed} memories, expected ≥${a.minMemoriesUsed}`);
         }
       }
 

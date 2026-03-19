@@ -1,0 +1,161 @@
+[
+  {
+    "name": "Food context synthesis",
+    "description": "Prepare should include food/dietary info when user asks about dinner",
+    "steps": [
+      { "store": "I love sushi and Japanese food" },
+      { "store": "I'm severely allergic to peanuts" },
+      { "store": "I live in Berlin" },
+      { "store": "I prefer VS Code as my editor" },
+      { "store": "I have a golden retriever named Max" },
+      {
+        "prepare": [
+          { "role": "user", "content": "Can you help me plan dinner tonight?" }
+        ]
+      }
+    ],
+    "assert": [
+      { "step": 5, "contextContains": "peanut" },
+      { "step": 5, "contextNotContains": "VS Code" },
+      { "step": 5, "minMemoriesUsed": 2 }
+    ]
+  },
+  {
+    "name": "Tech context synthesis",
+    "description": "Prepare should include tech preferences when user asks about coding",
+    "steps": [
+      { "store": "I prefer TypeScript for all my projects" },
+      { "store": "I work as a backend engineer at Google" },
+      { "store": "I love hiking in the mountains" },
+      { "store": "My favorite food is ramen" },
+      {
+        "prepare": [
+          { "role": "user", "content": "Can you review my code and suggest improvements?" }
+        ]
+      }
+    ],
+    "assert": [
+      { "step": 4, "contextContains": "TypeScript" },
+      { "step": 4, "contextNotContains": "ramen" },
+      { "step": 4, "minMemoriesUsed": 1 }
+    ]
+  },
+  {
+    "name": "Empty memory graceful",
+    "description": "Prepare should return empty context when no memories exist",
+    "steps": [
+      {
+        "prepare": [
+          { "role": "user", "content": "What should I eat today?" }
+        ]
+      }
+    ],
+    "assert": [
+      { "step": 0, "minMemoriesUsed": 0 }
+    ]
+  },
+  {
+    "name": "Multi-turn conversation",
+    "description": "Prepare should use full conversation context, not just the last message",
+    "steps": [
+      { "store": "Has a cat named Luna" },
+      { "store": "Runs a small online store selling handmade ceramics" },
+      { "store": "Uses Shopify for the store" },
+      { "store": "Prefers dark roast coffee" },
+      {
+        "prepare": [
+          { "role": "user", "content": "I'm thinking about revamping my online business" },
+          { "role": "assistant", "content": "That sounds exciting! What aspects are you looking to improve?" },
+          { "role": "user", "content": "Mainly the platform and maybe adding new product categories" }
+        ]
+      }
+    ],
+    "assert": [
+      { "step": 4, "contextContains": "Shopify" },
+      { "step": 4, "contextNotContains": "coffee" },
+      { "step": 4, "minMemoriesUsed": 1 }
+    ]
+  },
+  {
+    "name": "Health context filtering",
+    "description": "Medical context should surface health/allergy info and filter out unrelated preferences",
+    "steps": [
+      { "store": "Takes 20mg of Lisinopril daily for blood pressure" },
+      { "store": "Allergic to penicillin" },
+      { "store": "Exercises 3 times a week — mostly running" },
+      { "store": "Favorite movie is Inception" },
+      { "store": "Drives a Tesla Model 3" },
+      {
+        "prepare": [
+          { "role": "user", "content": "I have a doctor's appointment tomorrow, can you help me prepare a summary of my health info?" }
+        ]
+      }
+    ],
+    "assert": [
+      { "step": 5, "contextContains": "penicillin" },
+      { "step": 5, "contextNotContains": "Tesla" },
+      { "step": 5, "contextNotContains": "Inception" },
+      { "step": 5, "minMemoriesUsed": 2 }
+    ]
+  },
+  {
+    "name": "Travel context synthesis",
+    "description": "Travel planning should surface location, preferences, and travel history",
+    "steps": [
+      { "store": "Lives in San Francisco" },
+      { "store": "Prefers aisle seats on flights" },
+      { "store": "Has Global Entry and TSA PreCheck" },
+      { "store": "Favorite programming language is Rust" },
+      { "store": "Visited Tokyo last summer and loved it" },
+      {
+        "prepare": [
+          { "role": "user", "content": "I want to book a trip for next month. Any suggestions?" }
+        ]
+      }
+    ],
+    "assert": [
+      { "step": 5, "contextContains": "San Francisco" },
+      { "step": 5, "contextNotContains": "Rust" },
+      { "step": 5, "minMemoriesUsed": 2 }
+    ]
+  },
+  {
+    "name": "Gift recommendation context",
+    "description": "Gift planning should surface hobbies and interests of the person, not work details",
+    "steps": [
+      { "store": "My partner Sarah loves painting and watercolors" },
+      { "store": "Sarah's birthday is March 28" },
+      { "store": "Sarah works as an accountant" },
+      { "store": "We recently adopted a rescue dog" },
+      { "store": "I use Postgres for all my databases" },
+      {
+        "prepare": [
+          { "role": "user", "content": "I need to find a birthday gift for Sarah" }
+        ]
+      }
+    ],
+    "assert": [
+      { "step": 5, "contextContains": "painting" },
+      { "step": 5, "contextNotContains": "Postgres" },
+      { "step": 5, "minMemoriesUsed": 2 }
+    ]
+  },
+  {
+    "name": "Prepare latency",
+    "description": "Prepare should complete within 15 seconds for a typical scenario",
+    "steps": [
+      { "store": "Likes Italian food" },
+      { "store": "Works remotely from Portland" },
+      { "store": "Owns a MacBook Pro M3" },
+      {
+        "prepare": [
+          { "role": "user", "content": "What laptop should I get for development?" }
+        ]
+      }
+    ],
+    "assert": [
+      { "step": 3, "maxDurationMs": 15000 },
+      { "step": 3, "minMemoriesUsed": 1 }
+    ]
+  }
+]

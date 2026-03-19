@@ -23,6 +23,7 @@ function tagColor(tag: ScenarioTag): string {
     conflict: c.magenta,
     recall: c.green,
     perf: c.gray,
+    synthesis: c.cyan,
   };
   return map[tag] ?? c.dim;
 }
