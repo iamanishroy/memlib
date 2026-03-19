@@ -23,14 +23,17 @@ import {
 } from "@/components/ui/select";
 import {
   BadgePlus,
+  BrainCircuit,
   Database,
   Hash,
   Home,
   Loader2,
+  MessageSquare,
   Plus,
   RefreshCw,
   ScanSearch,
   Sparkles,
+  Trash2,
   User,
 } from "lucide-react";
 
@@ -58,7 +61,14 @@ interface RecallResult {
   score: number;
 }
 
-type ActiveTab = "recall" | "store";
+interface PrepareResultData {
+  context: string;
+  memoriesUsed: string[];
+  candidatesConsidered: number;
+  tokenCount: number;
+}
+
+type ActiveTab = "recall" | "store" | "prepare";
 
 // ─── Fetch helpers ────────────────────────────────────────────────
 
@@ -117,9 +127,18 @@ export default function HomePage() {
   const [storeEntity, setStoreEntity] = useState("");
   const [storeTags, setStoreTags] = useState("");
 
+  // ── Prepare inputs ──────────────────────────────────────────────
+  const [prepareMessages, setPrepareMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([
+    { role: "user", content: "" },
+  ]);
+  const [prepareNs, setPrepareNs] = useState("");
+  const [prepareEntity, setPrepareEntity] = useState("");
+  const [prepareResult, setPrepareResult] = useState<PrepareResultData | null>(null);
+
   // ── State ──────────────────────────────────────────────────────
   const [searching, setSearching] = useState(false);
   const [storing, setStoring] = useState(false);
+  const [preparing, setPreparing] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>("recall");
 
   useEffect(() => {
@@ -222,6 +241,57 @@ export default function HomePage() {
     }
   };
 
+  // ── Prepare ─────────────────────────────────────────────────────
+  const handlePrepare = async () => {
+    const validMessages = prepareMessages.filter((m) => m.content.trim());
+    if (validMessages.length === 0 || !prepareNs.trim() || !prepareEntity.trim()) {
+      toast.error("Add at least one message, namespace, and entity");
+      return;
+    }
+    setPreparing(true);
+    setPrepareResult(null);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/memories`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "prepare",
+          namespace: prepareNs.trim(),
+          entity: prepareEntity.trim(),
+          messages: validMessages,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      const data: PrepareResultData = await res.json();
+      setPrepareResult(data);
+      if (!data.context) toast.info("No relevant memories found for this context");
+    } catch {
+      toast.error("Prepare failed");
+    } finally {
+      setPreparing(false);
+    }
+  };
+
+  const addMessage = () => {
+    const lastRole = prepareMessages[prepareMessages.length - 1]?.role;
+    setPrepareMessages([...prepareMessages, { role: lastRole === "user" ? "assistant" : "user", content: "" }]);
+  };
+
+  const updateMessage = (index: number, field: "role" | "content", value: string) => {
+    const updated = [...prepareMessages];
+    if (field === "role") {
+      updated[index] = { ...updated[index]!, role: value as "user" | "assistant" };
+    } else {
+      updated[index] = { ...updated[index]!, content: value };
+    }
+    setPrepareMessages(updated);
+  };
+
+  const removeMessage = (index: number) => {
+    if (prepareMessages.length <= 1) return;
+    setPrepareMessages(prepareMessages.filter((_, i) => i !== index));
+  };
+
   if (sessionPending || !session) return null;
 
   return (
@@ -234,7 +304,7 @@ export default function HomePage() {
         <div>
           <h1 className="text-xl font-bold">Home</h1>
           <p className="text-muted-foreground text-xs">
-            Store and recall memories
+            Store, recall, and prepare memories
           </p>
         </div>
         <div className="flex-1" />
@@ -295,7 +365,7 @@ export default function HomePage() {
         <CardContent className="p-0">
           {/* Tab selector — card style */}
           <div className="p-4 border-b border-dashed">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <button
                 onClick={() => setActiveTab("recall")}
                 className={cn(
@@ -330,7 +400,7 @@ export default function HomePage() {
                     Recall
                   </div>
                   <div className="text-[11px] text-muted-foreground mt-0.5">
-                    Semantic search across memories
+                    Semantic search
                   </div>
                 </div>
               </button>
@@ -369,7 +439,46 @@ export default function HomePage() {
                     Store
                   </div>
                   <div className="text-[11px] text-muted-foreground mt-0.5">
-                    Add a new memory to the project
+                    Add new memory
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setActiveTab("prepare")}
+                className={cn(
+                  "relative flex flex-col items-center gap-2 rounded-lg border p-4 text-center transition-all cursor-pointer",
+                  activeTab === "prepare"
+                    ? "border-violet-500/50 bg-violet-500/5 shadow-[0_0_12px_-3px] shadow-violet-500/20"
+                    : "border-border/50 bg-muted/30 hover:bg-muted/50 hover:border-border",
+                )}
+              >
+                <div
+                  className={cn(
+                    "flex items-center justify-center rounded-md p-2",
+                    activeTab === "prepare" ? "bg-violet-500/10" : "bg-muted",
+                  )}
+                >
+                  <BrainCircuit
+                    className={cn(
+                      "size-5",
+                      activeTab === "prepare"
+                        ? "text-violet-500"
+                        : "text-muted-foreground",
+                    )}
+                  />
+                </div>
+                <div>
+                  <div
+                    className={cn(
+                      "text-sm font-semibold",
+                      activeTab !== "prepare" && "text-muted-foreground",
+                    )}
+                  >
+                    Prepare
+                  </div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    Context synthesis
                   </div>
                 </div>
               </button>
@@ -697,6 +806,190 @@ export default function HomePage() {
                 Store Memory
               </Button>
             </div>
+          )}
+          {/* ── Prepare Tab ──────────────────────────────────────── */}
+          {activeTab === "prepare" && (
+            <>
+              <div className="p-4 space-y-4">
+                {/* Namespace / Entity */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="prepare-ns" className="text-xs">
+                      Namespace
+                    </Label>
+                    <Input
+                      id="prepare-ns"
+                      placeholder="e.g. chat, notes"
+                      value={prepareNs}
+                      onChange={(e) => setPrepareNs(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="prepare-entity" className="text-xs">
+                      Entity
+                    </Label>
+                    <Input
+                      id="prepare-entity"
+                      placeholder="e.g. user-123"
+                      value={prepareEntity}
+                      onChange={(e) => setPrepareEntity(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Messages */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Conversation Messages</Label>
+                  <div className="space-y-2">
+                    {prepareMessages.map((msg, i) => (
+                      <div key={i} className="flex gap-2 items-start">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateMessage(i, "role", msg.role === "user" ? "assistant" : "user")
+                          }
+                          className={cn(
+                            "h-9 px-2.5 rounded-md border text-xs font-medium shrink-0 transition-colors cursor-pointer min-w-[80px]",
+                            msg.role === "user"
+                              ? "bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400"
+                              : "bg-violet-500/10 border-violet-500/30 text-violet-600 dark:text-violet-400",
+                          )}
+                        >
+                          <span className="flex items-center gap-1.5">
+                            {msg.role === "user" ? (
+                              <User className="size-3" />
+                            ) : (
+                              <BrainCircuit className="size-3" />
+                            )}
+                            {msg.role}
+                          </span>
+                        </button>
+                        <input
+                          type="text"
+                          placeholder={msg.role === "user" ? "What the user said..." : "What the assistant said..."}
+                          className="flex-1 h-9 rounded-md border bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                          value={msg.content}
+                          onChange={(e) => updateMessage(i, "content", e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && i === prepareMessages.length - 1) {
+                              handlePrepare();
+                            }
+                          }}
+                        />
+                        {prepareMessages.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeMessage(i)}
+                            className="h-9 px-2 rounded-md text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addMessage}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer mt-1"
+                  >
+                    <Plus className="size-3" />
+                    Add message
+                  </button>
+                </div>
+
+                <Button
+                  className="gap-1.5 bg-violet-600 hover:bg-violet-700 text-white"
+                  onClick={handlePrepare}
+                  disabled={
+                    preparing ||
+                    !prepareNs.trim() ||
+                    !prepareEntity.trim() ||
+                    !prepareMessages.some((m) => m.content.trim())
+                  }
+                >
+                  {preparing ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <BrainCircuit className="size-3.5" />
+                  )}
+                  Prepare Context
+                </Button>
+              </div>
+
+              {/* ── Prepare Result ──────────────────────────────────── */}
+              {prepareResult ? (
+                <div className="border-t border-dashed">
+                  <div className="px-4 py-2 flex items-center gap-3 text-xs text-muted-foreground font-medium">
+                    <span>Synthesized context</span>
+                    <span className="h-3.5 w-px bg-border" />
+                    <span className="flex items-center gap-1">
+                      <Sparkles className="size-3 text-violet-500" />
+                      {prepareResult.memoriesUsed.length} memories used
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <MessageSquare className="size-3" />
+                      ~{prepareResult.tokenCount} tokens
+                    </span>
+                    <span>{prepareResult.candidatesConsidered} candidates considered</span>
+                  </div>
+                  {prepareResult.context ? (
+                    <div className="px-4 py-3">
+                      <div className="rounded-lg border border-violet-500/20 bg-violet-500/5 p-4">
+                        <p className="text-sm leading-relaxed">{prepareResult.context}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="px-4 py-6 text-center text-sm text-muted-foreground">
+                      No relevant memories found for this conversation context.
+                    </div>
+                  )}
+                </div>
+              ) : (
+                !preparing && (
+                  <div className="border-t border-dashed">
+                    <div className="px-4 py-2 text-xs text-muted-foreground font-medium">
+                      How it works
+                    </div>
+                    <div className="px-4 py-3 space-y-3 opacity-60">
+                      <div className="flex items-start gap-3">
+                        <div className="flex items-center justify-center rounded-md bg-violet-500/10 p-1.5 mt-0.5 shrink-0">
+                          <ScanSearch className="size-3.5 text-violet-500" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium">1. Analyze conversation intent</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            LLM reads the conversation and generates targeted search queries
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <div className="flex items-center justify-center rounded-md bg-violet-500/10 p-1.5 mt-0.5 shrink-0">
+                          <Database className="size-3.5 text-violet-500" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium">2. Multi-query recall</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            Retrieves memories in parallel using multiple search angles
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <div className="flex items-center justify-center rounded-md bg-violet-500/10 p-1.5 mt-0.5 shrink-0">
+                          <BrainCircuit className="size-3.5 text-violet-500" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium">3. Synthesize context</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            LLM filters relevant memories and writes a task-specific briefing
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              )}
+            </>
           )}
         </CardContent>
       </Card>

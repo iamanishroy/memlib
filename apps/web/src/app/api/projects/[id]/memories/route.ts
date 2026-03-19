@@ -292,9 +292,13 @@ export async function POST(
     tags?: string[];
     metadata?: Record<string, unknown>;
     limit?: number;
+    messages?: { role: string; content: string }[];
+    maxCandidates?: number;
+    maxTokens?: number;
+    category?: string;
   };
 
-  if (body.action !== "recall" && body.action !== "store") {
+  if (body.action !== "recall" && body.action !== "store" && body.action !== "prepare") {
     return Response.json({ error: "Invalid action" }, { status: 400 });
   }
 
@@ -340,6 +344,27 @@ export async function POST(
         { limit: body.limit ?? 10 },
       );
       return Response.json(results);
+    }
+
+    // ── Prepare (context-aware synthesis) ─────────────────────
+    if (body.action === "prepare") {
+      if (!body.namespace || !body.entity || !body.messages) {
+        return Response.json(
+          { error: "namespace, entity, and messages are required" },
+          { status: 400 },
+        );
+      }
+      const result = await memoryService.prepare(
+        body.namespace,
+        body.entity,
+        body.messages as any,
+        {
+          maxCandidates: body.maxCandidates,
+          maxTokens: body.maxTokens,
+          category: body.category,
+        },
+      );
+      return Response.json(result);
     }
 
     // ── Store ──────────────────────────────────────────────────
