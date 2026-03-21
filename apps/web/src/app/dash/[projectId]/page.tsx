@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useProject } from "./layout";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
+import { useSessionState } from "@/hooks/use-session-state";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -68,7 +69,7 @@ interface PrepareResultData {
   tokenCount: number;
 }
 
-type ActiveTab = "recall" | "store" | "prepare";
+type ActiveTab = "synthesis" | "recall" | "store";
 
 // ─── Fetch helpers ────────────────────────────────────────────────
 
@@ -116,30 +117,30 @@ export default function HomePage() {
   const { projectId } = useProject();
 
   // ── Recall inputs ──────────────────────────────────────────────
-  const [query, setQuery] = useState("");
-  const [selectedNs, setSelectedNs] = useState("");
-  const [selectedEntity, setSelectedEntity] = useState("");
+  const [query, setQuery] = useSessionState(`${projectId}:recall:query`, "");
+  const [selectedNs, setSelectedNs] = useSessionState(`${projectId}:recall:ns`, "");
+  const [selectedEntity, setSelectedEntity] = useSessionState(`${projectId}:recall:entity`, "");
   const [results, setResults] = useState<RecallResult[]>([]);
 
   // ── Store inputs ───────────────────────────────────────────────
-  const [storeContent, setStoreContent] = useState("");
-  const [storeNs, setStoreNs] = useState("");
-  const [storeEntity, setStoreEntity] = useState("");
-  const [storeTags, setStoreTags] = useState("");
+  const [storeContent, setStoreContent] = useSessionState(`${projectId}:store:content`, "");
+  const [storeNs, setStoreNs] = useSessionState(`${projectId}:store:ns`, "");
+  const [storeEntity, setStoreEntity] = useSessionState(`${projectId}:store:entity`, "");
+  const [storeTags, setStoreTags] = useSessionState(`${projectId}:store:tags`, "");
 
-  // ── Prepare inputs ──────────────────────────────────────────────
-  const [prepareMessages, setPrepareMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([
+  // ── Synthesis inputs ───────────────────────────────────────────
+  const [prepareMessages, setPrepareMessages] = useSessionState<{ role: "user" | "assistant"; content: string }[]>(`${projectId}:synthesis:messages`, [
     { role: "user", content: "" },
   ]);
-  const [prepareNs, setPrepareNs] = useState("");
-  const [prepareEntity, setPrepareEntity] = useState("");
+  const [prepareNs, setPrepareNs] = useSessionState(`${projectId}:synthesis:ns`, "");
+  const [prepareEntity, setPrepareEntity] = useSessionState(`${projectId}:synthesis:entity`, "");
   const [prepareResult, setPrepareResult] = useState<PrepareResultData | null>(null);
 
   // ── State ──────────────────────────────────────────────────────
   const [searching, setSearching] = useState(false);
   const [storing, setStoring] = useState(false);
   const [preparing, setPreparing] = useState(false);
-  const [activeTab, setActiveTab] = useState<ActiveTab>("recall");
+  const [activeTab, setActiveTab] = useSessionState<ActiveTab>(`${projectId}:activeTab`, "synthesis");
 
   useEffect(() => {
     if (!sessionPending && !session) router.push("/auth");
@@ -161,7 +162,7 @@ export default function HomePage() {
   const namespaces = nsData?.namespaces ?? [];
   const entityCount = nsData?.entityCount ?? 0;
 
-  // ── React Query: entities for selected namespace ────────────────
+  // ── React Query: entities for selected namespace (recall) ───────
   const { data: entities = [], isLoading: loadingEntities } = useQuery({
     queryKey: ["entities", projectId, selectedNs],
     queryFn: () => fetchEntitiesForNamespace(projectId, selectedNs),
@@ -169,11 +170,25 @@ export default function HomePage() {
     staleTime: Infinity,
   });
 
-  // ── Handle namespace change ─────────────────────────────────────
+  // ── React Query: entities for synthesis namespace ────────────────
+  const { data: synthesisEntities = [], isLoading: loadingSynthesisEntities } = useQuery({
+    queryKey: ["entities", projectId, prepareNs],
+    queryFn: () => fetchEntitiesForNamespace(projectId, prepareNs),
+    enabled: !!session && !!prepareNs,
+    staleTime: Infinity,
+  });
+
+  // ── Handle namespace change (recall) ────────────────────────────
   const handleNsChange = (ns: string) => {
     setSelectedNs(ns);
     setSelectedEntity("");
     setResults([]);
+  };
+
+  // ── Handle namespace change (synthesis) ──────────────────────────
+  const handleSynthesisNsChange = (ns: string) => {
+    setPrepareNs(ns);
+    setPrepareEntity("");
   };
 
   // ── Recall ──────────────────────────────────────────────────────
@@ -367,6 +382,45 @@ export default function HomePage() {
           <div className="p-4 border-b border-dashed">
             <div className="grid grid-cols-3 gap-3">
               <button
+                onClick={() => setActiveTab("synthesis")}
+                className={cn(
+                  "relative flex flex-col items-center gap-2 rounded-lg border p-4 text-center transition-all cursor-pointer",
+                  activeTab === "synthesis"
+                    ? "border-blue-500/50 bg-blue-500/5 shadow-[0_0_12px_-3px] shadow-blue-500/20"
+                    : "border-border/50 bg-muted/30 hover:bg-muted/50 hover:border-border",
+                )}
+              >
+                <div
+                  className={cn(
+                    "flex items-center justify-center rounded-md p-2",
+                    activeTab === "synthesis" ? "bg-blue-500/10" : "bg-muted",
+                  )}
+                >
+                  <BrainCircuit
+                    className={cn(
+                      "size-5",
+                      activeTab === "synthesis"
+                        ? "text-blue-500"
+                        : "text-muted-foreground",
+                    )}
+                  />
+                </div>
+                <div>
+                  <div
+                    className={cn(
+                      "text-sm font-semibold",
+                      activeTab !== "synthesis" && "text-muted-foreground",
+                    )}
+                  >
+                    Synthesis
+                  </div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    Context-aware recall
+                  </div>
+                </div>
+              </button>
+
+              <button
                 onClick={() => setActiveTab("recall")}
                 className={cn(
                   "relative flex flex-col items-center gap-2 rounded-lg border p-4 text-center transition-all cursor-pointer",
@@ -440,45 +494,6 @@ export default function HomePage() {
                   </div>
                   <div className="text-[11px] text-muted-foreground mt-0.5">
                     Add new memory
-                  </div>
-                </div>
-              </button>
-
-              <button
-                onClick={() => setActiveTab("prepare")}
-                className={cn(
-                  "relative flex flex-col items-center gap-2 rounded-lg border p-4 text-center transition-all cursor-pointer",
-                  activeTab === "prepare"
-                    ? "border-violet-500/50 bg-violet-500/5 shadow-[0_0_12px_-3px] shadow-violet-500/20"
-                    : "border-border/50 bg-muted/30 hover:bg-muted/50 hover:border-border",
-                )}
-              >
-                <div
-                  className={cn(
-                    "flex items-center justify-center rounded-md p-2",
-                    activeTab === "prepare" ? "bg-violet-500/10" : "bg-muted",
-                  )}
-                >
-                  <BrainCircuit
-                    className={cn(
-                      "size-5",
-                      activeTab === "prepare"
-                        ? "text-violet-500"
-                        : "text-muted-foreground",
-                    )}
-                  />
-                </div>
-                <div>
-                  <div
-                    className={cn(
-                      "text-sm font-semibold",
-                      activeTab !== "prepare" && "text-muted-foreground",
-                    )}
-                  >
-                    Prepare
-                  </div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">
-                    Context synthesis
                   </div>
                 </div>
               </button>
@@ -680,51 +695,42 @@ export default function HomePage() {
                 !searching && (
                   <div className="border-t border-dashed">
                     <div className="px-4 py-2 text-xs text-muted-foreground font-medium">
-                      Example results
+                      How it works
                     </div>
-                    <div className="divide-y opacity-50">
-                      {[
-                        {
-                          content:
-                            "User prefers dark mode and uses TypeScript for all projects",
-                          score: 94,
-                          similarity: 92,
-                          importance: 80,
-                          tags: ["preference", "dev"],
-                        },
-                        {
-                          content:
-                            "Scheduled a meeting for next Friday to discuss the API redesign",
-                          score: 87,
-                          similarity: 85,
-                          importance: 70,
-                          tags: ["meeting", "api"],
-                        },
-                        {
-                          content:
-                            "Favorite framework is Next.js with App Router, prefers server components",
-                          score: 76,
-                          similarity: 78,
-                          importance: 60,
-                          tags: ["preference"],
-                        },
-                      ].map((r, i) => (
-                        <div key={i} className="px-4 py-3">
-                          <p className="text-sm leading-relaxed">{r.content}</p>
-                          <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Sparkles className="size-3" />
-                              {r.score}% match
-                            </span>
-                            <span>Similarity: {r.similarity}%</span>
-                            <span>Importance: {r.importance}%</span>
-                            <span className="flex items-center gap-1">
-                              <Hash className="size-3" />
-                              {r.tags.join(", ")}
-                            </span>
-                          </div>
+                    <div className="px-4 py-3 space-y-3 opacity-60">
+                      <div className="flex items-start gap-3">
+                        <div className="flex items-center justify-center rounded-md bg-primary/10 p-1.5 mt-0.5 shrink-0">
+                          <Database className="size-3.5 text-primary" />
                         </div>
-                      ))}
+                        <div>
+                          <p className="text-xs font-medium">1. Select scope</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            Choose a namespace and entity to narrow the search space
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <div className="flex items-center justify-center rounded-md bg-primary/10 p-1.5 mt-0.5 shrink-0">
+                          <ScanSearch className="size-3.5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium">2. Semantic search</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            Your query is embedded and compared against stored memories using cosine similarity
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <div className="flex items-center justify-center rounded-md bg-primary/10 p-1.5 mt-0.5 shrink-0">
+                          <Sparkles className="size-3.5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium">3. Ranked results</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            Results are scored by similarity, recency, and importance
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )
@@ -805,36 +811,166 @@ export default function HomePage() {
                 )}
                 Store Memory
               </Button>
+
+              {/* How it works */}
+              <div className="border-t border-dashed mt-4 -mx-4">
+                <div className="px-4 py-2 text-xs text-muted-foreground font-medium">
+                  How it works
+                </div>
+                <div className="px-4 py-3 space-y-3 opacity-60">
+                  <div className="flex items-start gap-3">
+                    <div className="flex items-center justify-center rounded-md bg-primary/10 p-1.5 mt-0.5 shrink-0">
+                      <BadgePlus className="size-3.5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium">1. LLM extraction</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Content is analyzed by an LLM to extract individual facts and classify them
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="flex items-center justify-center rounded-md bg-primary/10 p-1.5 mt-0.5 shrink-0">
+                      <ScanSearch className="size-3.5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium">2. Deduplication</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Each extracted fact is checked against existing memories to avoid duplicates
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="flex items-center justify-center rounded-md bg-primary/10 p-1.5 mt-0.5 shrink-0">
+                      <Database className="size-3.5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium">3. Conflict resolution</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Contradicting memories are updated and an audit trail is logged
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
-          {/* ── Prepare Tab ──────────────────────────────────────── */}
-          {activeTab === "prepare" && (
+          {/* ── Synthesis Tab ─────────────────────────────────────── */}
+          {activeTab === "synthesis" && (
             <>
               <div className="p-4 space-y-4">
-                {/* Namespace / Entity */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="prepare-ns" className="text-xs">
-                      Namespace
-                    </Label>
-                    <Input
-                      id="prepare-ns"
-                      placeholder="e.g. chat, notes"
-                      value={prepareNs}
-                      onChange={(e) => setPrepareNs(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="prepare-entity" className="text-xs">
-                      Entity
-                    </Label>
-                    <Input
-                      id="prepare-entity"
-                      placeholder="e.g. user-123"
-                      value={prepareEntity}
-                      onChange={(e) => setPrepareEntity(e.target.value)}
-                    />
-                  </div>
+                {/* Namespace / Entity selectors */}
+                <div className="flex gap-2 flex-wrap">
+                  {(() => {
+                    const nsItems = namespaces.map((ns) => ({
+                      label: ns.namespace,
+                      value: ns.namespace,
+                      count: ns.count,
+                    }));
+                    const selectedNsItem =
+                      nsItems.find((i) => i.value === prepareNs) ?? null;
+                    return (
+                      <Select
+                        value={selectedNsItem}
+                        onValueChange={(item) => {
+                          if (item) handleSynthesisNsChange(item.value);
+                        }}
+                        items={nsItems}
+                      >
+                        <SelectTrigger className="min-w-[180px]">
+                          <SelectValue>
+                            {(item: { label: string; count: number } | null) =>
+                              item ? (
+                                <span className="flex items-center gap-1.5">
+                                  <Database className="size-3.5 text-muted-foreground" />
+                                  {item.label}
+                                  <span className="text-muted-foreground">
+                                    ({item.count})
+                                  </span>
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">
+                                  {loadingNs
+                                    ? "Loading..."
+                                    : "Select namespace"}
+                                </span>
+                              )
+                            }
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent alignItemWithTrigger={false}>
+                          <SelectGroup>
+                            {nsItems.map((item) => (
+                              <SelectItem key={item.value} value={item}>
+                                <Database className="size-3.5 text-muted-foreground" />
+                                {item.label}
+                                <span className="text-muted-foreground">
+                                  ({item.count})
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    );
+                  })()}
+
+                  {(() => {
+                    const entItems = synthesisEntities.map((ent) => ({
+                      label: ent.entity,
+                      value: ent.entity,
+                      count: ent.count,
+                    }));
+                    const selectedEntItem =
+                      entItems.find((i) => i.value === prepareEntity) ?? null;
+                    return (
+                      <Select
+                        value={selectedEntItem}
+                        onValueChange={(item) => {
+                          if (item) setPrepareEntity(item.value);
+                        }}
+                        items={entItems}
+                        disabled={!prepareNs || loadingSynthesisEntities}
+                      >
+                        <SelectTrigger className="min-w-[180px]">
+                          <SelectValue>
+                            {(item: { label: string; count: number } | null) =>
+                              item ? (
+                                <span className="flex items-center gap-1.5">
+                                  <User className="size-3.5 text-muted-foreground" />
+                                  {item.label}
+                                  <span className="text-muted-foreground">
+                                    ({item.count})
+                                  </span>
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">
+                                  {loadingSynthesisEntities
+                                    ? "Loading..."
+                                    : !prepareNs
+                                      ? "Select namespace first"
+                                      : "Select entity"}
+                                </span>
+                              )
+                            }
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent alignItemWithTrigger={false}>
+                          <SelectGroup>
+                            {entItems.map((item) => (
+                              <SelectItem key={item.value} value={item}>
+                                <User className="size-3.5 text-muted-foreground" />
+                                {item.label}
+                                <span className="text-muted-foreground">
+                                  ({item.count})
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    );
+                  })()}
                 </div>
 
                 {/* Messages */}
@@ -851,8 +987,8 @@ export default function HomePage() {
                           className={cn(
                             "h-9 px-2.5 rounded-md border text-xs font-medium shrink-0 transition-colors cursor-pointer min-w-[80px]",
                             msg.role === "user"
-                              ? "bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400"
-                              : "bg-violet-500/10 border-violet-500/30 text-violet-600 dark:text-violet-400",
+                              ? "bg-primary/10 border-primary/30 text-primary"
+                              : "bg-muted border-border text-muted-foreground",
                           )}
                         >
                           <span className="flex items-center gap-1.5">
@@ -899,7 +1035,7 @@ export default function HomePage() {
                 </div>
 
                 <Button
-                  className="gap-1.5 bg-violet-600 hover:bg-violet-700 text-white"
+                  className="gap-1.5"
                   onClick={handlePrepare}
                   disabled={
                     preparing ||
@@ -913,7 +1049,7 @@ export default function HomePage() {
                   ) : (
                     <BrainCircuit className="size-3.5" />
                   )}
-                  Prepare Context
+                  Synthesize
                 </Button>
               </div>
 
@@ -924,7 +1060,7 @@ export default function HomePage() {
                     <span>Synthesized context</span>
                     <span className="h-3.5 w-px bg-border" />
                     <span className="flex items-center gap-1">
-                      <Sparkles className="size-3 text-violet-500" />
+                      <Sparkles className="size-3 text-primary" />
                       {prepareResult.memoriesUsed.length} memories used
                     </span>
                     <span className="flex items-center gap-1">
@@ -935,7 +1071,7 @@ export default function HomePage() {
                   </div>
                   {prepareResult.context ? (
                     <div className="px-4 py-3">
-                      <div className="rounded-lg border border-violet-500/20 bg-violet-500/5 p-4">
+                      <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
                         <p className="text-sm leading-relaxed">{prepareResult.context}</p>
                       </div>
                     </div>
@@ -953,8 +1089,8 @@ export default function HomePage() {
                     </div>
                     <div className="px-4 py-3 space-y-3 opacity-60">
                       <div className="flex items-start gap-3">
-                        <div className="flex items-center justify-center rounded-md bg-violet-500/10 p-1.5 mt-0.5 shrink-0">
-                          <ScanSearch className="size-3.5 text-violet-500" />
+                        <div className="flex items-center justify-center rounded-md bg-primary/10 p-1.5 mt-0.5 shrink-0">
+                          <ScanSearch className="size-3.5 text-primary" />
                         </div>
                         <div>
                           <p className="text-xs font-medium">1. Analyze conversation intent</p>
@@ -964,8 +1100,8 @@ export default function HomePage() {
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
-                        <div className="flex items-center justify-center rounded-md bg-violet-500/10 p-1.5 mt-0.5 shrink-0">
-                          <Database className="size-3.5 text-violet-500" />
+                        <div className="flex items-center justify-center rounded-md bg-primary/10 p-1.5 mt-0.5 shrink-0">
+                          <Database className="size-3.5 text-primary" />
                         </div>
                         <div>
                           <p className="text-xs font-medium">2. Multi-query recall</p>
@@ -975,8 +1111,8 @@ export default function HomePage() {
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
-                        <div className="flex items-center justify-center rounded-md bg-violet-500/10 p-1.5 mt-0.5 shrink-0">
-                          <BrainCircuit className="size-3.5 text-violet-500" />
+                        <div className="flex items-center justify-center rounded-md bg-primary/10 p-1.5 mt-0.5 shrink-0">
+                          <BrainCircuit className="size-3.5 text-primary" />
                         </div>
                         <div>
                           <p className="text-xs font-medium">3. Synthesize context</p>
