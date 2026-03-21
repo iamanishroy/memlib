@@ -1,7 +1,5 @@
-import { auth } from "@memlib/auth";
 import { createHash } from "crypto";
 import pg from "pg";
-import type { Context as HonoContext } from "hono";
 
 const { Client } = pg;
 
@@ -13,27 +11,16 @@ export type ApiKeyInfo = {
   permission: number; // 1=read, 2=read&write, 3=admin
 };
 
-export type CreateContextOptions = {
-  context: HonoContext;
+export type Session = {
+  user: { id: string; name: string; email: string; [key: string]: unknown };
+  session: { id: string; [key: string]: unknown };
 };
 
-// ─── Context Factory ──────────────────────────────────────────────
-// NOTE: No DB queries here — keep this fast for every request.
-// API key resolution happens lazily in apiKeyProcedure using
-// an ephemeral pg.Client (connect → query → end).
-
-export async function createContext({ context }: CreateContextOptions) {
-  const session = await auth.api.getSession({
-    headers: context.req.raw.headers,
-  });
-
-  return {
-    session,
-    headers: context.req.raw.headers,
-  };
-}
-
-export type Context = Awaited<ReturnType<typeof createContext>>;
+export type Context = {
+  session: Session | null;
+  headers: Headers;
+  databaseUrl?: string;
+};
 
 // ─── API Key Resolution (ephemeral connection per call) ───────────
 
@@ -50,7 +37,6 @@ export async function resolveApiKey(
   const hash = createHash("sha256").update(token).digest("hex");
 
   // Use ephemeral pg.Client — connect, query, disconnect.
-  // No persistent Pool needed for Workers.
   const client = new Client({ connectionString: databaseUrl });
   try {
     await client.connect();

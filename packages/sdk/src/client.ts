@@ -15,7 +15,7 @@ import type {
   PrepareResult,
 } from "./types";
 
-const DEFAULT_BASE_URL = "https://memlib-api.anishroy.com";
+const DEFAULT_BASE_URL = "https://mem.anishroy.com/api";
 
 export class MemLib {
   private readonly apiKey: string;

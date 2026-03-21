@@ -7,7 +7,6 @@ const pool = new Pool({
 
 export const auth = betterAuth({
   database: pool,
-  trustedOrigins: [process.env.CORS_ORIGIN || "http://localhost:8001"],
   emailAndPassword: {
     enabled: true,
   },
@@ -22,5 +21,5 @@ export const auth = betterAuth({
     },
   },
   secret: process.env.BETTER_AUTH_SECRET!,
-  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:8001",
+  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
 });

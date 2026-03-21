@@ -29,12 +29,9 @@
         "./src/*"
       ]
     },
-    "types": [
-      "@cloudflare/workers-types"
-    ]
+    "types": []
   },
   "include": [
-    "../server/env.d.ts",
     "./next-env.d.ts",
     "./**/*.ts",
     "./**/*.tsx",

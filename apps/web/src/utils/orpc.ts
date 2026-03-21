@@ -1,5 +1,4 @@
 import type { AppRouterClient } from "@memlib/api/routers/index";
-import { env } from "@memlib/env/web";
 import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 import { createTanstackQueryUtils } from "@orpc/tanstack-query";
@@ -20,13 +19,7 @@ export const queryClient = new QueryClient({
 });
 
 export const link = new RPCLink({
-  url: `${env.NEXT_PUBLIC_SERVER_URL}/rpc`,
-  fetch(url, options) {
-    return fetch(url, {
-      ...options,
-      credentials: "include",
-    });
-  },
+  url: "/api/rpc",
   headers: async () => {
     if (typeof window !== "undefined") {
       return {};
