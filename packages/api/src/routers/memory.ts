@@ -81,9 +81,9 @@ export const memoryRouter = {
     .route({ method: "POST", path: "/" })
     .input(
       z.object({
-        namespace: z.string(),
-        entity: z.string(),
-        content: z.string(),
+        namespace: z.string().min(1, "namespace is required"),
+        entity: z.string().min(1, "entity is required"),
+        content: z.string().min(1, "content is required"),
         infer: z.boolean().optional().default(true),
         tags: z.array(z.string()).optional(),
         metadata: z.record(z.string(), z.unknown()).optional(),
@@ -125,8 +125,8 @@ export const memoryRouter = {
     .route({ method: "POST", path: "/batch" })
     .input(
       z.object({
-        namespace: z.string(),
-        entity: z.string(),
+        namespace: z.string().min(1, "namespace is required"),
+        entity: z.string().min(1, "entity is required"),
         memories: z.array(
           z.object({
             content: z.string(),
@@ -157,8 +157,8 @@ export const memoryRouter = {
     .route({ method: "GET", path: "/" })
     .input(
       z.object({
-        namespace: z.string(),
-        entity: z.string().optional(),
+        namespace: z.string().min(1, "namespace is required"),
+        entity: z.string().min(1).optional(),
         limit: z.number().optional(),
       }),
     )
@@ -196,9 +196,9 @@ export const memoryRouter = {
     .route({ method: "POST", path: "/recall" })
     .input(
       z.object({
-        namespace: z.string(),
-        entity: z.string(),
-        query: z.string(),
+        namespace: z.string().min(1, "namespace is required"),
+        entity: z.string().min(1, "entity is required"),
+        query: z.string().min(1, "query is required"),
         category: z.string().optional(),
         limit: z.number().optional(),
         tags: z.array(z.string()).optional(),
@@ -225,8 +225,8 @@ export const memoryRouter = {
     .route({ method: "POST", path: "/prepare" })
     .input(
       z.object({
-        namespace: z.string(),
-        entity: z.string(),
+        namespace: z.string().min(1, "namespace is required"),
+        entity: z.string().min(1, "entity is required"),
         messages: z.array(
           z.object({
             role: z.enum(["user", "assistant", "system"]),
@@ -281,7 +281,7 @@ export const memoryRouter = {
     .route({ method: "GET", path: "/events" })
     .input(
       z.object({
-        namespace: z.string(),
+        namespace: z.string().min(1, "namespace is required"),
         memoryId: z.string().uuid().optional(),
         limit: z.number().optional(),
       }),

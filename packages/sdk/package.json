@@ -1,6 +1,6 @@
 {
   "name": "memlib",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "description": "TypeScript SDK for MemLib — AI agent memory API",
   "type": "module",
   "main": "./dist/index.cjs",

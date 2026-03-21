@@ -3,7 +3,7 @@
 export interface MemLibConfig {
   /** API key for authentication (e.g. "sk_...") */
   apiKey: string;
-  /** Base URL of the MemLib API. Defaults to "https://memlib-api.anishroy.com" */
+  /** Base URL of the MemLib API. Defaults to "https://mem.anishroy.com/api" */
   baseUrl?: string;
   /** Default namespace for all operations. Can be overridden per call. */
   namespace?: string;

@@ -29,8 +29,8 @@ export class MemLib {
     }
     this.apiKey = config.apiKey;
     this.baseUrl = (config.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
-    this.defaultNamespace = config.namespace ?? "default";
-    this.defaultEntity = config.entity ?? "default";
+    this.defaultNamespace = config.namespace ?? "";
+    this.defaultEntity = config.entity ?? "";
   }
 
   // ── Internal ────────────────────────────────────────────────────
@@ -87,12 +87,24 @@ export class MemLib {
 
   /** Resolve namespace — per-call override or constructor default */
   private ns(override?: string): string {
-    return override ?? this.defaultNamespace;
+    const value = override ?? this.defaultNamespace;
+    if (!value) {
+      throw new Error(
+        "MemLib: namespace is required. Pass it in the constructor or per-call options.",
+      );
+    }
+    return value;
   }
 
   /** Resolve entity — per-call override or constructor default */
   private ent(override?: string): string {
-    return override ?? this.defaultEntity;
+    const value = override ?? this.defaultEntity;
+    if (!value) {
+      throw new Error(
+        "MemLib: entity is required. Pass it in the constructor or per-call options.",
+      );
+    }
+    return value;
   }
 
   // ── Public API ──────────────────────────────────────────────────
