@@ -1,4 +1,4 @@
-import type { MemoryService } from "@memz/memory";
+import type { MemoryService } from "@memlib/memory";
 import type {
   Scenario,
   ScenarioResult,

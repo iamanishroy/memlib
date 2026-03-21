@@ -5,7 +5,7 @@ import { config } from "dotenv";
 config({ path: "./.env" });
 config({ path: "../../apps/server/.env" });
 
-const app = await alchemy("memz");
+const app = await alchemy("memlib");
 
 export const server = await Worker("server", {
   cwd: "../../apps/server",

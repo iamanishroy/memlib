@@ -1,6 +1,6 @@
-import { MemZError } from "./errors";
+import { MemLibError } from "./errors";
 import type {
-  MemZConfig,
+  MemLibConfig,
   StoreOptions,
   BatchStoreOptions,
   ListOptions,
@@ -15,17 +15,17 @@ import type {
   PrepareResult,
 } from "./types";
 
-const DEFAULT_BASE_URL = "https://memz-api.anishroy.com";
+const DEFAULT_BASE_URL = "https://memlib-api.anishroy.com";
 
-export class MemZ {
+export class MemLib {
   private readonly apiKey: string;
   private readonly baseUrl: string;
   private readonly defaultNamespace: string;
   private readonly defaultEntity: string;
 
-  constructor(config: MemZConfig) {
+  constructor(config: MemLibConfig) {
     if (!config.apiKey) {
-      throw new Error("MemZ: apiKey is required");
+      throw new Error("MemLib: apiKey is required");
     }
     this.apiKey = config.apiKey;
     this.baseUrl = (config.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
@@ -75,8 +75,8 @@ export class MemZ {
       } catch {
         body = await response.text().catch(() => null);
       }
-      throw new MemZError(
-        `MemZ API error: ${response.status} ${response.statusText}`,
+      throw new MemLibError(
+        `MemLib API error: ${response.status} ${response.statusText}`,
         response.status,
         body,
       );

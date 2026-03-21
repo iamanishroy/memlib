@@ -1,4 +1,4 @@
-import { auth } from "@memz/auth";
+import { auth } from "@memlib/auth";
 import { createHash } from "crypto";
 import pg from "pg";
 import type { Context as HonoContext } from "hono";

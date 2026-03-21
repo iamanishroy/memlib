@@ -1,9 +1,9 @@
 // ─── Configuration ────────────────────────────────────────────────
 
-export interface MemZConfig {
+export interface MemLibConfig {
   /** API key for authentication (e.g. "sk_...") */
   apiKey: string;
-  /** Base URL of the MemZ API. Defaults to "https://memz-api.anishroy.com" */
+  /** Base URL of the MemLib API. Defaults to "https://memlib-api.anishroy.com" */
   baseUrl?: string;
   /** Default namespace for all operations. Can be overridden per call. */
   namespace?: string;

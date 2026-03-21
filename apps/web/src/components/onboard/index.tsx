@@ -36,7 +36,7 @@ export function Onboarding() {
     {
       id: "project-name",
       title: "Name your project",
-      description: "Choose a name for your MemZ project.",
+      description: "Choose a name for your MemLib project.",
       completed: projectName.trim().length > 0 && openStepId !== "project-name",
     },
     {
@@ -202,7 +202,7 @@ export function Onboarding() {
         {/* Logo */}
         <div className="flex flex-col items-center gap-2 mb-6">
           <Logo className="h-10 w-10" />
-          <span className="text-xl font-semibold text-foreground">MemZ</span>
+          <span className="text-xl font-semibold text-foreground">MemLib</span>
         </div>
 
         <div className="w-full rounded-lg border bg-card p-4 text-card-foreground shadow-xs">

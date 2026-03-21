@@ -1,6 +1,6 @@
-import { db } from "@memz/db";
-import * as schema from "@memz/db/schema/auth";
-import { env } from "@memz/env/server";
+import { db } from "@memlib/db";
+import * as schema from "@memlib/db/schema/auth";
+import { env } from "@memlib/env/server";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 

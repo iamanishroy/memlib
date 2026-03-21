@@ -1,7 +1,7 @@
 {
-  "name": "simple-memory",
-  "version": "0.2.1",
-  "description": "TypeScript SDK for the MemZ memory API",
+  "name": "memlib",
+  "version": "0.1.2",
+  "description": "TypeScript SDK for MemLib — AI agent memory API",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -28,7 +28,7 @@
     "dev": "tsup --watch"
   },
   "keywords": [
-    "memz",
+    "memlib",
     "memory",
     "ai",
     "semantic",
@@ -37,7 +37,7 @@
   ],
   "license": "MIT",
   "devDependencies": {
-    "@memz/config": "*",
+    "@memlib/config": "*",
     "tsup": "^8.4.0",
     "typescript": "^5"
   }

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import pg from "pg";
 import { apiKeyProcedure } from "../index";
-import { createMemoryService, type MemoryService } from "@memz/memory";
+import { createMemoryService, type MemoryService } from "@memlib/memory";
 
 const { Client } = pg;
 

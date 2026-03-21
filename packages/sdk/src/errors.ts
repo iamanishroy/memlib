@@ -1,7 +1,7 @@
 /**
- * Error thrown when the MemZ API returns a non-2xx response.
+ * Error thrown when the MemLib API returns a non-2xx response.
  */
-export class MemZError extends Error {
+export class MemLibError extends Error {
   /** HTTP status code */
   readonly status: number;
   /** Parsed response body (if available) */
@@ -9,7 +9,7 @@ export class MemZError extends Error {
 
   constructor(message: string, status: number, body?: unknown) {
     super(message);
-    this.name = "MemZError";
+    this.name = "MemLibError";
     this.status = status;
     this.body = body;
   }

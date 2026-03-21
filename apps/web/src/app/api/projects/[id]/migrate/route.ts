@@ -3,8 +3,8 @@ import { headers } from "next/headers";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { eq, and } from "drizzle-orm";
-import * as schema from "@memz/db/schema/index";
-import { createMemoryService } from "@memz/memory";
+import * as schema from "@memlib/db/schema/index";
+import { createMemoryService } from "@memlib/memory";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const db = drizzle(pool, { schema });

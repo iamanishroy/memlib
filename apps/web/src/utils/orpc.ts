@@ -1,5 +1,5 @@
-import type { AppRouterClient } from "@memz/api/routers/index";
-import { env } from "@memz/env/web";
+import type { AppRouterClient } from "@memlib/api/routers/index";
+import { env } from "@memlib/env/web";
 import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 import { createTanstackQueryUtils } from "@orpc/tanstack-query";

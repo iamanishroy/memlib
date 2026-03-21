@@ -1,5 +1,5 @@
 {
-  "name": "@memz/infra",
+  "name": "@memlib/infra",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,7 +11,7 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@memz/config": "*",
+    "@memlib/config": "*",
     "alchemy": "^0.82.1",
     "typescript": "^5"
   }

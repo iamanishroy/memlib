@@ -9,7 +9,7 @@ export const Logo = (props: SVGProps<SVGSVGElement>) => (
     xmlns="http://www.w3.org/2000/svg"
     {...props}
   >
-    <title>MemZ</title>
+    <title>MemLib</title>
     <path
       d="M51.9852 39.2912V27.8061C51.9852 15.12 41.7011 4.83594 29.0151 4.83594C16.329 4.83594 6.04492 15.12 6.04492 27.8061V62.8658"
       stroke="currentColor"

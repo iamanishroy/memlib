@@ -1,4 +1,4 @@
-import { type server } from "@memz/infra/alchemy.run";
+import { type server } from "@memlib/infra/alchemy.run";
 
 // This file infers types for the cloudflare:workers environment from your Alchemy Worker.
 // @see https://alchemy.run/concepts/bindings/#type-safe-bindings

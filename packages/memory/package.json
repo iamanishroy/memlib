@@ -1,5 +1,5 @@
 {
-  "name": "@memz/memory",
+  "name": "@memlib/memory",
   "version": "1.0.0",
   "type": "module",
   "exports": {
@@ -24,7 +24,7 @@
     "pg": "^8.13.3"
   },
   "devDependencies": {
-    "@memz/config": "*",
+    "@memlib/config": "*",
     "@types/pg": "^8.11.11",
     "dotenv": "^17.3.1",
     "drizzle-kit": "^0.30.5",

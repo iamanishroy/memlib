@@ -1,6 +1,6 @@
-# @memz/bench
+# @memlib/bench
 
-Benchmark CLI for testing the MemZ memory system — quality, deduplication, conflict resolution, recall precision, and performance.
+Benchmark CLI for testing the MemLib memory system — quality, deduplication, conflict resolution, recall precision, and performance.
 
 ## Usage
 
@@ -60,7 +60,7 @@ npx tsx src/cli.ts --list
 ## Output
 
 ```
-  ⚡ memz benchmark  ─────────────────────────────────────
+  ⚡ memlib benchmark  ─────────────────────────────────────
 
   ✓ Single fact extraction  [quality]  1823ms  1 llm
     Extracted 1 fact(s)

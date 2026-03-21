@@ -1,4 +1,4 @@
-# @memz/memory
+# @memlib/memory
 
 A high-quality, cost-efficient memory service for AI agents. Provides semantic storage, retrieval, conflict resolution, and consolidation — all through a dependency-injected factory pattern that supports multiple LLM and embedding providers.
 
@@ -54,7 +54,7 @@ interface MemoryDeps {
 ## Quick Start
 
 ```typescript
-import { createMemoryService } from "@memz/memory";
+import { createMemoryService } from "@memlib/memory";
 
 const memory = createMemoryService({
   database: { connectionString: process.env.DATABASE_URL },

@@ -1,5 +1,5 @@
 {
-  "name": "@memz/db",
+  "name": "@memlib/db",
   "type": "module",
   "exports": {
     ".": {
@@ -16,7 +16,7 @@
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
-    "@memz/env": "*",
+    "@memlib/env": "*",
     "@neondatabase/serverless": "^1.0.2",
     "dotenv": "^17.2.2",
     "drizzle-orm": "^0.45.1",
@@ -24,7 +24,7 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@memz/config": "*",
+    "@memlib/config": "*",
     "@types/pg": "^8.16.0",
     "drizzle-kit": "^0.31.8",
     "typescript": "^5"

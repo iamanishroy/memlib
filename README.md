@@ -1,4 +1,4 @@
-# memz
+# memlib
 
 A memory API platform — store, recall, and manage AI memories with semantic search.
 
@@ -15,7 +15,7 @@ A memory API platform — store, recall, and manage AI memories with semantic se
 ## Project Structure
 
 ```
-memz/
+memlib/
 ├── apps/
 │   ├── web/           # Next.js dashboard
 │   └── server/        # Cloudflare Worker API
@@ -24,7 +24,7 @@ memz/
 │   ├── auth/          # Auth config (better-auth)
 │   ├── db/            # Drizzle schema & connection
 │   ├── memory/        # Memory service (store, recall, consolidate)
-│   ├── sdk/           # Published SDK (@anishroy/memz)
+│   ├── sdk/           # Published SDK (memlib)
 │   ├── env/           # Shared env config
 │   ├── ui/            # Shared UI components
 │   └── infra/         # Alchemy infra-as-code
@@ -95,7 +95,7 @@ curl -X POST https://your-worker.workers.dev/v1/memory \
 Install the published SDK:
 
 ```bash
-npm install @anishroy/memz
+npm install memlib
 ```
 
 ## Deployment

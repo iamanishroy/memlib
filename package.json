@@ -1,5 +1,5 @@
 {
-  "name": "memz",
+  "name": "memlib",
   "private": true,
   "workspaces": [
     "apps/*",
@@ -13,21 +13,21 @@
     "dev:native": "turbo -F native dev",
     "dev:web": "turbo -F web dev",
     "dev:server": "turbo -F server dev",
-    "db:push": "turbo -F @memz/db db:push",
-    "db:studio": "turbo -F @memz/db db:studio",
-    "db:generate": "turbo -F @memz/db db:generate",
-    "db:migrate": "turbo -F @memz/db db:migrate",
-    "deploy": "turbo -F @memz/infra deploy",
-    "destroy": "turbo -F @memz/infra destroy"
+    "db:push": "turbo -F @memlib/db db:push",
+    "db:studio": "turbo -F @memlib/db db:studio",
+    "db:generate": "turbo -F @memlib/db db:generate",
+    "db:migrate": "turbo -F @memlib/db db:migrate",
+    "deploy": "turbo -F @memlib/infra deploy",
+    "destroy": "turbo -F @memlib/infra destroy"
   },
   "dependencies": {
-    "@memz/env": "*",
+    "@memlib/env": "*",
     "dotenv": "^17.2.2",
     "zod": "^4.1.13"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20251213.0",
-    "@memz/config": "*",
+    "@memlib/config": "*",
     "@types/node": "^22.13.14",
     "turbo": "^2.8.12",
     "typescript": "^5"

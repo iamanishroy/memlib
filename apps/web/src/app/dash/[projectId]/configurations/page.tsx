@@ -537,7 +537,7 @@ export default function ConfigurationsPage() {
                   ))}
                   <p className="text-xs text-muted-foreground">
                     These prompts are currently defined in the{" "}
-                    <code className="text-foreground">@memz/memory</code>{" "}
+                    <code className="text-foreground">@memlib/memory</code>{" "}
                     package. Per-project prompt customization is coming soon.
                   </p>
                 </>

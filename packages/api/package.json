@@ -1,5 +1,5 @@
 {
-  "name": "@memz/api",
+  "name": "@memlib/api",
   "type": "module",
   "exports": {
     ".": {
@@ -11,10 +11,10 @@
   },
   "scripts": {},
   "dependencies": {
-    "@memz/auth": "*",
-    "@memz/db": "*",
-    "@memz/env": "*",
-    "@memz/memory": "*",
+    "@memlib/auth": "*",
+    "@memlib/db": "*",
+    "@memlib/env": "*",
+    "@memlib/memory": "*",
     "@orpc/client": "^1.12.2",
     "@orpc/openapi": "^1.12.2",
     "@orpc/server": "^1.12.2",
@@ -24,7 +24,7 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@memz/config": "*",
+    "@memlib/config": "*",
     "hono": "^4.8.2",
     "typescript": "^5"
   }

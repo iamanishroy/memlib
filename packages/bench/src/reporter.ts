@@ -38,7 +38,7 @@ export function printResults(results: ScenarioResult[]): void {
 
   console.log();
   console.log(
-    `${c.bold}  ⚡ memz benchmark${c.reset}  ${c.dim}─────────────────────────────────────${c.reset}`,
+    `${c.bold}  ⚡ memlib benchmark${c.reset}  ${c.dim}─────────────────────────────────────${c.reset}`,
   );
   console.log();
 

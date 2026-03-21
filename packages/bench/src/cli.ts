@@ -2,7 +2,7 @@
 
 import "dotenv/config";
 
-import { createMemoryService } from "@memz/memory";
+import { createMemoryService } from "@memlib/memory";
 import { loadScenarios } from "./loader";
 import { runBenchmark } from "./runner";
 import { printResults } from "./reporter";
@@ -11,7 +11,7 @@ import type { ScenarioTag } from "./types";
 // ─── CLI ──────────────────────────────────────────────────────────
 
 const HELP = `
-  ⚡ memz-bench — benchmark the memory system
+  ⚡ memlib-bench — benchmark the memory system
 
   Usage:
     npx tsx packages/bench/src/cli.ts [options]

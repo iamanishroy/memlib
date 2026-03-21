@@ -42,7 +42,7 @@ export function TopNav() {
         <Link href="/" className="flex items-center gap-2 shrink-0">
           <Logo className="h-5 w-5 text-primary" />
           <span className="font-semibold text-sm hidden sm:inline">
-            MemZ
+            MemLib
           </span>
         </Link>
 

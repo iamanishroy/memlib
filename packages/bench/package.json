@@ -1,20 +1,20 @@
 {
-  "name": "@memz/bench",
+  "name": "@memlib/bench",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "bin": {
-    "memz-bench": "./src/cli.ts"
+    "memlib-bench": "./src/cli.ts"
   },
   "scripts": {
     "bench": "tsx src/cli.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@memz/memory": "*"
+    "@memlib/memory": "*"
   },
   "devDependencies": {
-    "@memz/config": "*",
+    "@memlib/config": "*",
     "tsx": "^4.19.0",
     "typescript": "^5"
   }

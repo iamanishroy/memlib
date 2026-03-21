@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════
--- Memz Entity Architecture Migration
+-- MemLib Entity Architecture Migration
 -- Run this against each PROJECT's database (not the main app DB)
 -- ═══════════════════════════════════════════════════════════════════
 

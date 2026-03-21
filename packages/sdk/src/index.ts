@@ -1,7 +1,7 @@
-export { MemZ } from "./client";
-export { MemZError } from "./errors";
+export { MemLib } from "./client";
+export { MemLibError } from "./errors";
 export type {
-  MemZConfig,
+  MemLibConfig,
   StoreOptions,
   BatchStoreOptions,
   ListOptions,

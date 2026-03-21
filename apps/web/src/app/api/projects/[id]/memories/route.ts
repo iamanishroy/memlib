@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { eq, and } from "drizzle-orm";
-import * as schema from "@memz/db/schema/index";
+import * as schema from "@memlib/db/schema/index";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const db = drizzle(pool, { schema });
@@ -314,7 +314,7 @@ export async function POST(
     return Response.json({ error: "Project not found" }, { status: 404 });
   }
 
-  const { createMemoryService } = await import("@memz/memory");
+  const { createMemoryService } = await import("@memlib/memory");
   const memoryService = createMemoryService({
     database: { connectionString: project.databaseUrl },
     embedding: {

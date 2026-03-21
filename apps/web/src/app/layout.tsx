@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MemZ",
-  description: "MemZ - Your AI-powered memory layer",
+  title: "MemLib",
+  description: "MemLib - Your AI-powered memory layer",
   icons: {
     icon: [
       { url: "/favicon.svg", type: "image/svg+xml" },

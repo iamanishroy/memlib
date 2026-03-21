@@ -1,5 +1,5 @@
 {
-  "name": "@memz/auth",
+  "name": "@memlib/auth",
   "type": "module",
   "exports": {
     ".": {
@@ -11,14 +11,14 @@
   },
   "scripts": {},
   "dependencies": {
-    "@memz/db": "*",
-    "@memz/env": "*",
+    "@memlib/db": "*",
+    "@memlib/env": "*",
     "better-auth": "1.5.2",
     "dotenv": "^17.2.2",
     "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@memz/config": "*",
+    "@memlib/config": "*",
     "typescript": "^5"
   }
 }

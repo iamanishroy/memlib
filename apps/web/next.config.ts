@@ -1,4 +1,4 @@
-import "@memz/env/web";
+import "@memlib/env/web";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {

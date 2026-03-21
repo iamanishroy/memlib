@@ -9,10 +9,10 @@
     "compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server"
   },
   "dependencies": {
-    "@memz/api": "*",
-    "@memz/auth": "*",
-    "@memz/db": "*",
-    "@memz/env": "*",
+    "@memlib/api": "*",
+    "@memlib/auth": "*",
+    "@memlib/db": "*",
+    "@memlib/env": "*",
     "@neondatabase/serverless": "^1.0.2",
     "@orpc/openapi": "^1.12.2",
     "@orpc/server": "^1.12.2",
@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20251213.0",
-    "@memz/config": "*",
+    "@memlib/config": "*",
     "@types/node": "^22.13.14",
     "alchemy": "^0.82.1",
     "tsdown": "^0.16.5",

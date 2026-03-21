@@ -1,7 +1,7 @@
-import { createContext } from "@memz/api/context";
-import { appRouter } from "@memz/api/routers/index";
-import { auth } from "@memz/auth";
-import { env } from "@memz/env/server";
+import { createContext } from "@memlib/api/context";
+import { appRouter } from "@memlib/api/routers/index";
+import { auth } from "@memlib/auth";
+import { env } from "@memlib/env/server";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
 import { onError } from "@orpc/server";

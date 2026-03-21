@@ -1,26 +1,26 @@
-# @anishroy/memz
+# memlib
 
-TypeScript SDK for the MemZ memory API — store, recall, and manage AI agent memories with semantic search, smart deduplication, and automatic fact extraction.
+TypeScript SDK for the MemLib memory API — store, recall, and manage AI agent memories with semantic search, smart deduplication, and automatic fact extraction.
 
 ## Installation
 
 ```bash
-npm install @anishroy/memz
+npm install memlib
 ```
 
 ## Quick Start
 
 ```typescript
-import { MemZ } from "@anishroy/memz";
+import { MemLib } from "memlib";
 
-const memz = new MemZ({
+const mem = new MemLib({
   apiKey: "sk_...",
   namespace: "my-app",
   entity: "user-123",
 });
 
 // Smart store — automatically extracts facts, deduplicates, resolves conflicts
-const result = await memz.store({
+const result = await mem.store({
   content: "I prefer TypeScript over JavaScript. My team uses React and Next.js.",
 });
 
@@ -33,7 +33,7 @@ console.log(result.skipped);   // 0 — no duplicates
 console.log(result.conflicts); // 0 — no conflicts
 
 // Recall memories by meaning
-const memories = await memz.recall({
+const memories = await mem.recall({
   query: "What tech stack do they use?",
   category: "professional",
 });
@@ -45,7 +45,7 @@ console.log(memories[0].content);
 ## Configuration
 
 ```typescript
-const memz = new MemZ({
+const mem = new MemLib({
   apiKey: "sk_...",              // required — your project API key
   baseUrl: "https://...",        // optional, defaults to production API
   namespace: "my-app",           // optional, defaults to "default"
@@ -57,13 +57,13 @@ Both `namespace` and `entity` can be set in the constructor as defaults and over
 
 ## API
 
-### `memz.store(options)` → `StoreResult`
+### `mem.store(options)` → `StoreResult`
 
 Store a memory. By default, uses **smart store** — the API extracts atomic facts via LLM, deduplicates against existing memories, and resolves conflicts automatically.
 
 ```typescript
 // Smart store (default) — LLM extracts facts, deduplicates, resolves conflicts
-const result = await memz.store({
+const result = await mem.store({
   content: "I switched from VS Code to Cursor. Love the AI features.",
   source: "conversation",
   tags: ["preference"],
@@ -74,7 +74,7 @@ const result = await memz.store({
 // result.conflicts — count of conflicts detected and resolved
 
 // Raw store (no LLM inference) — stores content as-is
-const raw = await memz.store({
+const raw = await mem.store({
   content: "Exact fact to store verbatim",
   infer: false,
 });
@@ -91,12 +91,12 @@ const raw = await memz.store({
 | `source` | `string` | — | Origin identifier (e.g. `"conversation"`, `"api"`) |
 | `ttl` | `number` | — | Time-to-live in seconds |
 
-### `memz.recall(options)` → `RetrievedMemory[]`
+### `mem.recall(options)` → `RetrievedMemory[]`
 
 Semantic search with hybrid scoring: `score = 0.6 × similarity + 0.2 × recency + 0.2 × importance`
 
 ```typescript
-const memories = await memz.recall({
+const memories = await mem.recall({
   query: "What editor do they use?",
   category: "preference",      // filter by category
   tags: ["dev"],               // filter by tags
@@ -117,21 +117,21 @@ const memories = await memz.recall({
 | `tags` | `string[]` | — | Filter by any matching tag |
 | `minImportance` | `number` | — | Minimum importance (0.0–1.0) |
 
-### `memz.list(options?)` → `Memory[]`
+### `mem.list(options?)` → `Memory[]`
 
 List stored memories.
 
 ```typescript
-const all = await memz.list();
-const filtered = await memz.list({ entity: "user-456", limit: 20 });
+const all = await mem.list();
+const filtered = await mem.list({ entity: "user-456", limit: 20 });
 ```
 
-### `memz.batchStore(options)` → `BatchStoreResult`
+### `mem.batchStore(options)` → `BatchStoreResult`
 
 Store multiple memories at once (raw, no inference).
 
 ```typescript
-const result = await memz.batchStore({
+const result = await mem.batchStore({
   memories: [
     { content: "Fact one" },
     { content: "Fact two", tags: ["important"] },
@@ -140,20 +140,20 @@ const result = await memz.batchStore({
 // result.count, result.memories
 ```
 
-### `memz.delete(memoryId)` → `DeleteResult`
+### `mem.delete(memoryId)` → `DeleteResult`
 
 Delete a memory by UUID.
 
 ```typescript
-await memz.delete("550e8400-e29b-41d4-a716-446655440000");
+await mem.delete("550e8400-e29b-41d4-a716-446655440000");
 ```
 
-### `memz.health()` → `HealthResult`
+### `mem.health()` → `HealthResult`
 
 Check API connectivity.
 
 ```typescript
-const { status } = await memz.health();
+const { status } = await mem.health();
 ```
 
 ## Smart Store Pipeline
@@ -184,12 +184,12 @@ Use these to filter recall results with the `category` option.
 ## Error Handling
 
 ```typescript
-import { MemZ, MemZError } from "@anishroy/memz";
+import { MemLib, MemLibError } from "memlib";
 
 try {
-  await memz.recall({ query: "test" });
+  await mem.recall({ query: "test" });
 } catch (error) {
-  if (error instanceof MemZError) {
+  if (error instanceof MemLibError) {
     console.error(error.status);  // HTTP status code
     console.error(error.body);    // API error response
   }
@@ -202,12 +202,12 @@ All types are exported for use:
 
 ```typescript
 import type {
-  MemZConfig,
+  MemLibConfig,
   StoreOptions,
   RecallOptions,
   Memory,
   RetrievedMemory,
   StoreResult,
   BatchStoreResult,
-} from "@anishroy/memz";
+} from "memlib";
 ```
