@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export function middleware(request: NextRequest) {
-  const sessionCookie = request.cookies.get("better-auth.session_token");
+  // Better Auth uses __Secure- prefix when baseURL is https://
+  const sessionCookie =
+    request.cookies.get("better-auth.session_token") ||
+    request.cookies.get("__Secure-better-auth.session_token");
 
   const isProtectedRoute =
     request.nextUrl.pathname.startsWith("/dash") ||
