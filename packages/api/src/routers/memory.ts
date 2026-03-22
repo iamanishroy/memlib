@@ -252,6 +252,30 @@ export const memoryRouter = {
       );
     }),
 
+  /** POST /v1/memory/diff — memory changelog since a timestamp */
+  diff: apiKeyProcedure(1)
+    .route({ method: "POST", path: "/diff" })
+    .input(
+      z.object({
+        namespace: z.string().min(1, "namespace is required"),
+        entity: z.string().min(1, "entity is required"),
+        since: z.string().min(1, "since timestamp is required"),
+        limit: z.number().optional(),
+      }),
+    )
+    .handler(async ({ input, context }) => {
+      return withService(
+        context.projectId,
+        (context as any).databaseUrl,
+        async (memory) => {
+          return memory.diff(input.namespace, input.entity, {
+            since: input.since,
+            limit: input.limit,
+          });
+        },
+      );
+    }),
+
   /** POST /v1/memory/consolidate — trigger consolidation */
   consolidate: apiKeyProcedure(3)
     .route({ method: "POST", path: "/consolidate" })
