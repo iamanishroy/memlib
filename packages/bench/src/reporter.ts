@@ -24,6 +24,7 @@ function tagColor(tag: ScenarioTag): string {
     recall: c.green,
     perf: c.gray,
     synthesis: c.cyan,
+    diff: c.green,
   };
   return map[tag] ?? c.dim;
 }
@@ -65,9 +66,7 @@ export function printResults(results: ScenarioResult[]): void {
 
     // Show reason on pass (dim) or fail (red)
     const reasonColor = result.validation.pass ? c.dim : c.red;
-    console.log(
-      `    ${reasonColor}${result.validation.reason}${c.reset}`,
-    );
+    console.log(`    ${reasonColor}${result.validation.reason}${c.reset}`);
     console.log();
   }
 
@@ -92,7 +91,8 @@ export function printResults(results: ScenarioResult[]): void {
   console.log(`  ${c.bold}Scores${c.reset}`);
   for (const [tag, { passed: p, total: t }] of byTag) {
     const pct = Math.round((p / t) * 100);
-    const bar = "█".repeat(Math.round(pct / 5)) + "░".repeat(20 - Math.round(pct / 5));
+    const bar =
+      "█".repeat(Math.round(pct / 5)) + "░".repeat(20 - Math.round(pct / 5));
     const color = pct === 100 ? c.green : pct >= 70 ? c.yellow : c.red;
     console.log(
       `    ${tagColor(tag)}${tag.padEnd(10)}${c.reset} ${color}${bar}${c.reset} ${color}${pct}%${c.reset} ${c.dim}(${p}/${t})${c.reset}`,
@@ -116,7 +116,9 @@ export function printResults(results: ScenarioResult[]): void {
 
   // Final badge
   if (failed === 0) {
-    console.log(`  ${c.bgGreen} PASS ${c.reset} All ${results.length} scenarios passed`);
+    console.log(
+      `  ${c.bgGreen} PASS ${c.reset} All ${results.length} scenarios passed`,
+    );
   } else {
     console.log(
       `  ${c.bgRed} FAIL ${c.reset} ${failed} of ${results.length} scenarios failed`,

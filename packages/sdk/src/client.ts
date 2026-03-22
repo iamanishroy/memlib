@@ -6,6 +6,7 @@ import type {
   ListOptions,
   RecallOptions,
   PrepareOptions,
+  DiffOptions,
   Memory,
   RetrievedMemory,
   StoreResult,
@@ -13,6 +14,7 @@ import type {
   DeleteResult,
   HealthResult,
   PrepareResult,
+  DiffResult,
 } from "./types";
 
 const DEFAULT_BASE_URL = "https://mem.anishroy.com/api";
@@ -199,6 +201,21 @@ export class MemLib {
         maxCandidates: options.maxCandidates,
         maxTokens: options.maxTokens,
         category: options.category,
+      },
+    });
+  }
+
+  /**
+   * Memory diff — returns what changed since a given timestamp.
+   * Zero LLM calls, pure audit trail query.
+   */
+  async diff(options: DiffOptions): Promise<DiffResult> {
+    return this._request<DiffResult>("POST", "/memory/diff", {
+      body: {
+        namespace: this.ns(options.namespace),
+        entity: this.ent(options.entity),
+        since: options.since,
+        limit: options.limit,
       },
     });
   }

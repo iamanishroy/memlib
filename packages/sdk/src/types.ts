@@ -154,3 +154,34 @@ export interface PrepareResult {
   /** Estimated token count of the context */
   tokenCount: number;
 }
+
+// ─── Diff (Memory Changelog) ──────────────────────────────────────
+
+export interface DiffOptions {
+  /** Return changes after this ISO timestamp */
+  since: string;
+  /** Namespace (overrides constructor default) */
+  namespace?: string;
+  /** Entity identifier */
+  entity?: string;
+  /** Max events to return (default 100) */
+  limit?: number;
+}
+
+export interface DiffResult {
+  created: {
+    id: string;
+    content: string;
+    category: string | null;
+    createdAt: string;
+  }[];
+  updated: {
+    id: string;
+    content: string;
+    previousContent: string;
+    updatedAt: string;
+  }[];
+  deleted: { id: string; content: string; deletedAt: string }[];
+  since: string;
+  changeCount: number;
+}

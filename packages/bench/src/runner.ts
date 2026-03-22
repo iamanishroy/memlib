@@ -6,6 +6,7 @@ import type {
   StoreStepResult,
   RecallStepResult,
   PrepareStepResult,
+  DiffStepResult,
   ScenarioTag,
 } from "./types";
 
@@ -111,6 +112,22 @@ export async function runScenario(
         tokenCount: result.tokenCount,
         raw: result,
       } satisfies PrepareStepResult);
+    } else if (step.action === "diff") {
+      const start = Date.now();
+      const result = await memory.diff(namespace, step.entity ?? entity, {
+        since: step.since,
+      });
+      const durationMs = Date.now() - start;
+
+      stepResults.push({
+        action: "diff",
+        durationMs,
+        created: result.created.length,
+        updated: result.updated.length,
+        deleted: result.deleted.length,
+        changeCount: result.changeCount,
+        raw: result,
+      } satisfies DiffStepResult);
     }
   }
 

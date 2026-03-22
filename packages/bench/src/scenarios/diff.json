@@ -1,0 +1,52 @@
+[
+  {
+    "name": "Detect new memories",
+    "description": "Diff should detect newly stored memories after the timestamp",
+    "steps": [
+      { "store": "Prefers dark roast coffee" },
+      { "store": "Works remotely from Portland" },
+      { "diff": "2000-01-01T00:00:00Z" }
+    ],
+    "assert": [
+      { "step": 2, "minCreatedDiff": 2 },
+      { "step": 2, "minChangeCount": 2 }
+    ]
+  },
+  {
+    "name": "Empty diff for future timestamp",
+    "description": "Diff with a future timestamp should return no changes",
+    "steps": [
+      { "store": "Likes hiking" },
+      { "diff": "2099-01-01T00:00:00Z" }
+    ],
+    "assert": [
+      { "step": 1, "maxChangeCount": 0 }
+    ]
+  },
+  {
+    "name": "Detect conflict updates",
+    "description": "Diff should detect when a memory is updated via conflict resolution",
+    "steps": [
+      { "store": "Prefers Python for scripting" },
+      { "store": "Now prefers TypeScript for scripting instead of Python" },
+      { "diff": "2000-01-01T00:00:00Z" }
+    ],
+    "assert": [
+      { "step": 2, "minChangeCount": 1 }
+    ]
+  },
+  {
+    "name": "Diff latency",
+    "description": "Diff should complete very quickly since it is a pure SQL query",
+    "steps": [
+      { "store": "Has two cats" },
+      { "store": "Lives in Tokyo" },
+      { "store": "Drives a Honda" },
+      { "diff": "2000-01-01T00:00:00Z" }
+    ],
+    "assert": [
+      { "step": 3, "maxDurationMs": 500 },
+      { "step": 3, "minChangeCount": 3 }
+    ]
+  }
+]

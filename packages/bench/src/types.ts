@@ -1,6 +1,13 @@
 // ─── Benchmark Scenario Types ─────────────────────────────────────
 
-export type ScenarioTag = "quality" | "dedup" | "conflict" | "recall" | "perf" | "synthesis";
+export type ScenarioTag =
+  | "quality"
+  | "dedup"
+  | "conflict"
+  | "recall"
+  | "perf"
+  | "synthesis"
+  | "diff";
 
 export interface StoreStep {
   action: "store";
@@ -22,7 +29,13 @@ export interface PrepareStep {
   entity?: string;
 }
 
-export type Step = StoreStep | RecallStep | PrepareStep;
+export interface DiffStep {
+  action: "diff";
+  since: string;
+  entity?: string;
+}
+
+export type Step = StoreStep | RecallStep | PrepareStep | DiffStep;
 
 export interface Scenario {
   /** Short human-readable name */
@@ -66,7 +79,21 @@ export interface PrepareStepResult {
   raw: unknown;
 }
 
-export type StepResult = StoreStepResult | RecallStepResult | PrepareStepResult;
+export interface DiffStepResult {
+  action: "diff";
+  durationMs: number;
+  created: number;
+  updated: number;
+  deleted: number;
+  changeCount: number;
+  raw: unknown;
+}
+
+export type StepResult =
+  | StoreStepResult
+  | RecallStepResult
+  | PrepareStepResult
+  | DiffStepResult;
 
 export interface Validation {
   pass: boolean;

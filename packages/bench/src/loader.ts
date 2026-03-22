@@ -1,7 +1,13 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join, basename } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Scenario, ScenarioTag, StepResult, Step, Validation } from "./types";
+import type {
+  Scenario,
+  ScenarioTag,
+  StepResult,
+  Step,
+  Validation,
+} from "./types";
 
 // ─── JSON Schema Types ────────────────────────────────────────────
 
@@ -9,6 +15,7 @@ interface JsonStep {
   store?: string;
   recall?: string;
   prepare?: { role: "user" | "assistant"; content: string }[];
+  diff?: string; // ISO timestamp string for "since"
   entity?: string;
   infer?: boolean;
   category?: string;
@@ -49,6 +56,12 @@ interface JsonAssert {
   /** Minimum memories used in synthesis */
   minMemoriesUsed?: number;
 
+  // ── Diff assertions ─────────────────────────────────────────
+  minCreatedDiff?: number;
+  minUpdatedDiff?: number;
+  minChangeCount?: number;
+  maxChangeCount?: number;
+
   // ── Scenario-level assertions ───────────────────────────────
   totalDurationMs?: number;
 }
@@ -86,20 +99,34 @@ function toStep(json: JsonStep): Step {
       entity: json.entity,
     };
   }
+  if (json.diff !== undefined) {
+    return {
+      action: "diff",
+      since: json.diff,
+      entity: json.entity,
+    };
+  }
   throw new Error(`Invalid step: ${JSON.stringify(json)}`);
 }
 
 // ─── Build validation function from assertions ────────────────────
 
-function buildValidator(asserts: JsonAssert[]): (results: StepResult[], totalDurationMs?: number) => Validation {
+function buildValidator(
+  asserts: JsonAssert[],
+): (results: StepResult[], totalDurationMs?: number) => Validation {
   return (results: StepResult[], totalDurationMs?: number): Validation => {
     const failures: string[] = [];
 
     for (const a of asserts) {
       // ── Scenario-level assertions ───────────────────────────
       if (a.totalDurationMs !== undefined) {
-        if (totalDurationMs !== undefined && totalDurationMs > a.totalDurationMs) {
-          failures.push(`Total duration ${totalDurationMs}ms exceeds ${a.totalDurationMs}ms`);
+        if (
+          totalDurationMs !== undefined &&
+          totalDurationMs > a.totalDurationMs
+        ) {
+          failures.push(
+            `Total duration ${totalDurationMs}ms exceeds ${a.totalDurationMs}ms`,
+          );
         }
         continue;
       }
@@ -114,60 +141,97 @@ function buildValidator(asserts: JsonAssert[]): (results: StepResult[], totalDur
       // ── Store assertions ────────────────────────────────────
       if (r.action === "store") {
         if (a.minCreated !== undefined && r.memoriesCreated < a.minCreated) {
-          failures.push(`Step ${a.step}: created ${r.memoriesCreated}, expected ≥${a.minCreated}`);
+          failures.push(
+            `Step ${a.step}: created ${r.memoriesCreated}, expected ≥${a.minCreated}`,
+          );
         }
         if (a.maxCreated !== undefined && r.memoriesCreated > a.maxCreated) {
-          failures.push(`Step ${a.step}: created ${r.memoriesCreated}, expected ≤${a.maxCreated}`);
+          failures.push(
+            `Step ${a.step}: created ${r.memoriesCreated}, expected ≤${a.maxCreated}`,
+          );
         }
         if (a.minSkipped !== undefined && r.skipped < a.minSkipped) {
-          failures.push(`Step ${a.step}: skipped ${r.skipped}, expected ≥${a.minSkipped}`);
+          failures.push(
+            `Step ${a.step}: skipped ${r.skipped}, expected ≥${a.minSkipped}`,
+          );
         }
         if (a.maxSkipped !== undefined && r.skipped > a.maxSkipped) {
-          failures.push(`Step ${a.step}: skipped ${r.skipped}, expected ≤${a.maxSkipped}`);
+          failures.push(
+            `Step ${a.step}: skipped ${r.skipped}, expected ≤${a.maxSkipped}`,
+          );
         }
         if (a.minConflicts !== undefined && r.conflicts < a.minConflicts) {
-          failures.push(`Step ${a.step}: conflicts ${r.conflicts}, expected ≥${a.minConflicts}`);
+          failures.push(
+            `Step ${a.step}: conflicts ${r.conflicts}, expected ≥${a.minConflicts}`,
+          );
         }
         if (a.maxConflicts !== undefined && r.conflicts > a.maxConflicts) {
-          failures.push(`Step ${a.step}: conflicts ${r.conflicts}, expected ≤${a.maxConflicts}`);
+          failures.push(
+            `Step ${a.step}: conflicts ${r.conflicts}, expected ≤${a.maxConflicts}`,
+          );
         }
-        if (a.minSkippedOrConflicts !== undefined && (r.skipped + r.conflicts) < a.minSkippedOrConflicts) {
-          failures.push(`Step ${a.step}: skipped+conflicts=${r.skipped + r.conflicts}, expected ≥${a.minSkippedOrConflicts}`);
+        if (
+          a.minSkippedOrConflicts !== undefined &&
+          r.skipped + r.conflicts < a.minSkippedOrConflicts
+        ) {
+          failures.push(
+            `Step ${a.step}: skipped+conflicts=${r.skipped + r.conflicts}, expected ≥${a.minSkippedOrConflicts}`,
+          );
         }
       }
 
       // ── Recall assertions ───────────────────────────────────
       if (r.action === "recall") {
         if (a.minResults !== undefined && r.results.length < a.minResults) {
-          failures.push(`Step ${a.step}: ${r.results.length} results, expected ≥${a.minResults}`);
+          failures.push(
+            `Step ${a.step}: ${r.results.length} results, expected ≥${a.minResults}`,
+          );
         }
         if (a.maxResults !== undefined && r.results.length > a.maxResults) {
-          failures.push(`Step ${a.step}: ${r.results.length} results, expected ≤${a.maxResults}`);
+          failures.push(
+            `Step ${a.step}: ${r.results.length} results, expected ≤${a.maxResults}`,
+          );
         }
         if (a.topContains !== undefined) {
           const top = r.results[0];
           if (!top) {
-            failures.push(`Step ${a.step}: no results, expected top to contain "${a.topContains}"`);
-          } else if (!top.content.toLowerCase().includes(a.topContains.toLowerCase())) {
-            failures.push(`Step ${a.step}: top result "${top.content}" doesn't contain "${a.topContains}"`);
+            failures.push(
+              `Step ${a.step}: no results, expected top to contain "${a.topContains}"`,
+            );
+          } else if (
+            !top.content.toLowerCase().includes(a.topContains.toLowerCase())
+          ) {
+            failures.push(
+              `Step ${a.step}: top result "${top.content}" doesn't contain "${a.topContains}"`,
+            );
           }
         }
         if (a.topContainsAny !== undefined) {
           const top = r.results[0];
           if (!top) {
-            failures.push(`Step ${a.step}: no results, expected top to contain one of [${a.topContainsAny.join(", ")}]`);
+            failures.push(
+              `Step ${a.step}: no results, expected top to contain one of [${a.topContainsAny.join(", ")}]`,
+            );
           } else {
             const lc = top.content.toLowerCase();
-            const match = a.topContainsAny.some((s) => lc.includes(s.toLowerCase()));
+            const match = a.topContainsAny.some((s) =>
+              lc.includes(s.toLowerCase()),
+            );
             if (!match) {
-              failures.push(`Step ${a.step}: top result "${top.content}" doesn't contain any of [${a.topContainsAny.join(", ")}]`);
+              failures.push(
+                `Step ${a.step}: top result "${top.content}" doesn't contain any of [${a.topContainsAny.join(", ")}]`,
+              );
             }
           }
         }
         if (a.allCategory !== undefined && r.results.length > 0) {
-          const bad = r.results.filter((m) => m.category && m.category !== a.allCategory);
+          const bad = r.results.filter(
+            (m) => m.category && m.category !== a.allCategory,
+          );
           if (bad.length > 0) {
-            failures.push(`Step ${a.step}: ${bad.length} results have wrong category`);
+            failures.push(
+              `Step ${a.step}: ${bad.length} results have wrong category`,
+            );
           }
         }
       }
@@ -175,23 +239,68 @@ function buildValidator(asserts: JsonAssert[]): (results: StepResult[], totalDur
       // ── Prepare assertions ──────────────────────────────────
       if (r.action === "prepare") {
         if (a.contextContains !== undefined) {
-          if (!r.context.toLowerCase().includes(a.contextContains.toLowerCase())) {
-            failures.push(`Step ${a.step}: context doesn't contain "${a.contextContains}" — got: "${r.context.slice(0, 100)}..."`);
+          if (
+            !r.context.toLowerCase().includes(a.contextContains.toLowerCase())
+          ) {
+            failures.push(
+              `Step ${a.step}: context doesn't contain "${a.contextContains}" — got: "${r.context.slice(0, 100)}..."`,
+            );
           }
         }
         if (a.contextNotContains !== undefined) {
-          if (r.context.toLowerCase().includes(a.contextNotContains.toLowerCase())) {
-            failures.push(`Step ${a.step}: context should NOT contain "${a.contextNotContains}"`);
+          if (
+            r.context.toLowerCase().includes(a.contextNotContains.toLowerCase())
+          ) {
+            failures.push(
+              `Step ${a.step}: context should NOT contain "${a.contextNotContains}"`,
+            );
           }
         }
-        if (a.minMemoriesUsed !== undefined && r.memoriesUsed < a.minMemoriesUsed) {
-          failures.push(`Step ${a.step}: used ${r.memoriesUsed} memories, expected ≥${a.minMemoriesUsed}`);
+        if (
+          a.minMemoriesUsed !== undefined &&
+          r.memoriesUsed < a.minMemoriesUsed
+        ) {
+          failures.push(
+            `Step ${a.step}: used ${r.memoriesUsed} memories, expected ≥${a.minMemoriesUsed}`,
+          );
         }
       }
 
       // ── Duration assertions (any step type) ─────────────────
       if (a.maxDurationMs !== undefined && r.durationMs > a.maxDurationMs) {
-        failures.push(`Step ${a.step}: ${r.durationMs}ms exceeds ${a.maxDurationMs}ms`);
+        failures.push(
+          `Step ${a.step}: ${r.durationMs}ms exceeds ${a.maxDurationMs}ms`,
+        );
+      }
+
+      // ── Diff assertions ──────────────────────────────────────
+      if (r.action === "diff") {
+        if (a.minCreatedDiff !== undefined && r.created < a.minCreatedDiff) {
+          failures.push(
+            `Step ${a.step}: created ${r.created}, expected ≥${a.minCreatedDiff}`,
+          );
+        }
+        if (a.minUpdatedDiff !== undefined && r.updated < a.minUpdatedDiff) {
+          failures.push(
+            `Step ${a.step}: updated ${r.updated}, expected ≥${a.minUpdatedDiff}`,
+          );
+        }
+        if (
+          a.minChangeCount !== undefined &&
+          r.changeCount < a.minChangeCount
+        ) {
+          failures.push(
+            `Step ${a.step}: changeCount ${r.changeCount}, expected ≥${a.minChangeCount}`,
+          );
+        }
+        if (
+          a.maxChangeCount !== undefined &&
+          r.changeCount > a.maxChangeCount
+        ) {
+          failures.push(
+            `Step ${a.step}: changeCount ${r.changeCount}, expected ≤${a.maxChangeCount}`,
+          );
+        }
       }
     }
 
@@ -200,12 +309,18 @@ function buildValidator(asserts: JsonAssert[]): (results: StepResult[], totalDur
       const summaries: string[] = [];
       for (const r of results) {
         if (r.action === "store") {
-          if (r.memoriesCreated > 0) summaries.push(`${r.memoriesCreated} created`);
+          if (r.memoriesCreated > 0)
+            summaries.push(`${r.memoriesCreated} created`);
           if (r.skipped > 0) summaries.push(`${r.skipped} skipped`);
           if (r.conflicts > 0) summaries.push(`${r.conflicts} conflicts`);
         }
         if (r.action === "recall") {
           summaries.push(`${r.results.length} recalled`);
+        }
+        if (r.action === "diff") {
+          summaries.push(
+            `${r.changeCount} changes (${r.created}+/${r.updated}~/${r.deleted}-)`,
+          );
         }
       }
       return { pass: true, reason: summaries.join(", ") || "OK" };
@@ -220,13 +335,17 @@ function buildValidator(asserts: JsonAssert[]): (results: StepResult[], totalDur
 export function loadScenarios(): Scenario[] {
   const __dirname = fileURLToPath(new URL(".", import.meta.url).toString());
   const dir = join(__dirname, "scenarios");
-  const files = readdirSync(dir).filter((f) => f.endsWith(".json")).sort();
+  const files = readdirSync(dir)
+    .filter((f) => f.endsWith(".json"))
+    .sort();
 
   const scenarios: Scenario[] = [];
 
   for (const file of files) {
     const tag = basename(file, ".json") as ScenarioTag;
-    const raw: JsonScenario[] = JSON.parse(readFileSync(join(dir, file), "utf-8"));
+    const raw: JsonScenario[] = JSON.parse(
+      readFileSync(join(dir, file), "utf-8"),
+    );
 
     for (const s of raw) {
       const validator = buildValidator(s.assert);
@@ -235,7 +354,8 @@ export function loadScenarios(): Scenario[] {
         description: s.description,
         tags: [tag],
         steps: s.steps.map(toStep),
-        validate: (results, totalDurationMs) => validator(results, totalDurationMs),
+        validate: (results, totalDurationMs) =>
+          validator(results, totalDurationMs),
       });
     }
   }

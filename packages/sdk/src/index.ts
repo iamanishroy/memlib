@@ -7,6 +7,7 @@ export type {
   ListOptions,
   RecallOptions,
   PrepareOptions,
+  DiffOptions,
   Memory,
   RetrievedMemory,
   StoreResult,
@@ -14,5 +15,6 @@ export type {
   DeleteResult,
   HealthResult,
   PrepareResult,
+  DiffResult,
   Message,
 } from "./types";

@@ -296,9 +296,15 @@ export async function POST(
     maxCandidates?: number;
     maxTokens?: number;
     category?: string;
+    since?: string;
   };
 
-  if (body.action !== "recall" && body.action !== "store" && body.action !== "prepare") {
+  if (
+    body.action !== "recall" &&
+    body.action !== "store" &&
+    body.action !== "prepare" &&
+    body.action !== "diff"
+  ) {
     return Response.json({ error: "Invalid action" }, { status: 400 });
   }
 
@@ -307,7 +313,10 @@ export async function POST(
     .select()
     .from(schema.project)
     .where(
-      and(eq(schema.project.id, id), eq(schema.project.userId, session.user.id)),
+      and(
+        eq(schema.project.id, id),
+        eq(schema.project.userId, session.user.id),
+      ),
     );
 
   if (!project) {
@@ -367,6 +376,21 @@ export async function POST(
       return Response.json(result);
     }
 
+    // ── Diff ───────────────────────────────────────────────────
+    if (body.action === "diff") {
+      if (!body.namespace || !body.entity || !body.since) {
+        return Response.json(
+          { error: "namespace, entity, and since are required" },
+          { status: 400 },
+        );
+      }
+      const result = await memoryService.diff(body.namespace, body.entity, {
+        since: body.since,
+        limit: body.limit,
+      });
+      return Response.json(result);
+    }
+
     // ── Store ──────────────────────────────────────────────────
     if (body.action === "store") {
       if (!body.namespace || !body.entity || !body.content) {
@@ -390,4 +414,3 @@ export async function POST(
     await memoryService.close();
   }
 }
-
