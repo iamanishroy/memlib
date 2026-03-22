@@ -8,6 +8,7 @@ import { source } from "@/lib/source";
 import { notFound } from "next/navigation";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import { CopyMarkdown } from "@/components/copy-markdown";
+import { Mermaid } from "@/components/mdx/mermaid";
 
 export default async function Page(props: {
   params: Promise<{ slug?: string[] }>;
@@ -29,7 +30,7 @@ export default async function Page(props: {
         />
       </DocsDescription>
       <DocsBody>
-        <MDXContent components={{ ...defaultMdxComponents }} />
+        <MDXContent components={{ ...defaultMdxComponents, Mermaid }} />
       </DocsBody>
     </DocsPage>
   );

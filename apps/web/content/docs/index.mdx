@@ -17,16 +17,16 @@ MemLib is an **open-source memory layer** for AI agents and applications. It pro
 
 ### How It Works
 
-```
-User says "I love hiking in the mountains"
-        ↓
-MemLib extracts: preference = outdoor activities, hiking
-        ↓
-Later: "Plan a weekend for me"
-        ↓
-MemLib recalls: "User enjoys hiking and mountain activities"
-        ↓
-AI generates a personalized weekend plan
+```mermaid
+flowchart TD
+    A["🗣️ User says: I love hiking in the mountains"] --> B["🧠 MemLib extracts structured facts"]
+    B --> C["💾 Stored: preference = outdoor activities, hiking"]
+    C --> D["🗣️ Later: Plan a weekend for me"]
+    D --> E["🔍 MemLib recalls: enjoys hiking & mountains"]
+    E --> F["✨ AI generates a personalized weekend plan"]
+
+    style A fill:#818cf8,color:#fff
+    style F fill:#34d399,color:#fff
 ```
 
 ### Architecture

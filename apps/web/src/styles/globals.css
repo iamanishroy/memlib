@@ -215,38 +215,116 @@
 }
 
 :root {
-  --fd-font-size-base: 0.875rem;
+  --fd-font-size-base: 0.8125rem;
 }
 
 /* Docs content typography */
 .fd-body {
-  font-size: 0.875rem;
-  line-height: 1.7;
+  font-size: 0.8125rem;
+  line-height: 1.75;
+  color: var(--muted-foreground);
+}
+
+.fd-body p {
+  margin-block: 0.75em;
 }
 
 .fd-body h1 {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--foreground);
 }
 
 .fd-body h2 {
-  font-size: 1.35rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+  margin-top: 2rem;
+  padding-bottom: 0.375rem;
+  border-bottom: 1px solid var(--border);
 }
 
 .fd-body h3 {
-  font-size: 1.1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--foreground);
+  margin-top: 1.5rem;
+}
+
+/* Lists */
+.fd-body ul,
+.fd-body ol {
+  padding-left: 1.25rem;
+  margin-block: 0.5em;
+}
+
+.fd-body li {
+  margin-block: 0.25em;
+}
+
+/* Tables */
+.fd-body table {
+  font-size: 0.8125rem;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.fd-body th {
+  font-weight: 600;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 2px solid var(--border);
+  color: var(--foreground);
+}
+
+.fd-body td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Inline code */
+.fd-body :not(pre) > code {
+  font-size: 0.75rem;
+  padding: 0.15em 0.35em;
+  border-radius: 0.25rem;
+  background: var(--muted);
+  font-weight: 500;
+}
+
+/* Code blocks */
+.fd-body pre {
+  font-size: 0.75rem;
+  line-height: 1.6;
+  border-radius: 0.5rem;
 }
 
 /* Title on docs page */
 [data-docs-page-title] {
-  font-size: 1.75rem !important;
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.025em !important;
 }
 
-/* Sidebar text smaller */
+/* Description */
+[data-docs-page-description] {
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+}
+
+/* Sidebar text */
 .fd-sidebar {
   font-size: 0.8125rem;
 }
 
 /* TOC sidebar text */
 .fd-toc {
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
+}
+
+/* Strong text in body should use foreground color */
+.fd-body strong {
+  color: var(--foreground);
+  font-weight: 600;
 }
