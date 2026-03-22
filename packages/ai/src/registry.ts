@@ -81,6 +81,7 @@ const _llmHandlers = new Map<string, GenerateTextFn>([
   ["xai", openaiCompatibleText],
   ["cohere", openaiCompatibleText],
   ["openrouter", openaiCompatibleText],
+  ["custom", openaiCompatibleText],
 ]);
 
 const _embeddingHandlers = new Map<string, GenerateEmbeddingFn>([
@@ -90,6 +91,7 @@ const _embeddingHandlers = new Map<string, GenerateEmbeddingFn>([
   // All OpenAI-compatible embedding providers
   ["mistral", openaiCompatibleEmbed],
   ["voyage", openaiCompatibleEmbed],
+  ["custom", openaiCompatibleEmbed],
 ]);
 
 // ─── Mutable Custom Registries ───────────────────────────────────

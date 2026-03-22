@@ -17,12 +17,7 @@ function ProviderLogo({
   const url = PROVIDER_LOGOS[providerId];
   if (!url) return null;
   return (
-    <img
-      src={url}
-      alt=""
-      className={`${className} shrink-0`}
-      loading="lazy"
-    />
+    <img src={url} alt="" className={`${className} shrink-0`} loading="lazy" />
   );
 }
 
@@ -44,15 +39,32 @@ export interface EmbeddingProviderUI extends Provider {
 
 // ─── Build from @memlib/ai registries ────────────────────────────
 
-export const LLM_PROVIDERS: LlmProvider[] = AI_LLM_PROVIDERS.map((p) => ({
-  id: p.id,
-  name: p.name,
-  icon: <ProviderLogo providerId={p.id} />,
-  models: p.models.map((m) => ({ id: m.id, name: m.name })),
-}));
+export const CUSTOM_LLM_PROVIDER: LlmProvider = {
+  id: "custom",
+  name: "Custom (OpenAI-compatible)",
+  icon: <ProviderLogo providerId="custom" />,
+  models: [],
+};
 
-export const EMBEDDING_PROVIDERS: EmbeddingProviderUI[] =
-  AI_EMBEDDING_PROVIDERS.map((p) => ({
+export const CUSTOM_EMBEDDING_PROVIDER: EmbeddingProviderUI = {
+  id: "custom",
+  name: "Custom (OpenAI-compatible)",
+  icon: <ProviderLogo providerId="custom" />,
+  models: [],
+};
+
+export const LLM_PROVIDERS: LlmProvider[] = [
+  ...AI_LLM_PROVIDERS.map((p) => ({
+    id: p.id,
+    name: p.name,
+    icon: <ProviderLogo providerId={p.id} />,
+    models: p.models.map((m) => ({ id: m.id, name: m.name })),
+  })),
+  CUSTOM_LLM_PROVIDER,
+];
+
+export const EMBEDDING_PROVIDERS: EmbeddingProviderUI[] = [
+  ...AI_EMBEDDING_PROVIDERS.map((p) => ({
     id: p.id,
     name: p.name,
     icon: <ProviderLogo providerId={p.id} />,
@@ -61,4 +73,6 @@ export const EMBEDDING_PROVIDERS: EmbeddingProviderUI[] =
       name: m.name,
       dimensions: m.dimensions,
     })),
-  }));
+  })),
+  CUSTOM_EMBEDDING_PROVIDER,
+];

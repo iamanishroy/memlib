@@ -53,9 +53,12 @@ interface ProjectConfig {
   databaseUrl: string;
   embeddingProvider: string;
   embeddingApiKey: string;
+  embeddingModel: string | null;
+  embeddingBaseUrl: string | null;
   llmProvider: string;
   llmApiKey: string;
   llmModel: string;
+  llmBaseUrl: string | null;
 }
 
 const sections = [
@@ -330,12 +333,18 @@ export default function ConfigurationsPage() {
                         <div className="space-y-2">
                           <Label>Provider</Label>
                           {(() => {
-                            const embeddingProviders =
-                              AI_EMBEDDING_PROVIDERS.map((p) => ({
+                            const embeddingProviders = [
+                              ...AI_EMBEDDING_PROVIDERS.map((p) => ({
                                 label: p.name,
                                 value: p.id,
                                 icon: <ProviderIcon providerId={p.id} />,
-                              }));
+                              })),
+                              {
+                                label: "Custom (OpenAI-compatible)",
+                                value: "custom",
+                                icon: <ProviderIcon providerId="custom" />,
+                              },
+                            ];
                             const selected =
                               embeddingProviders.find(
                                 (p) =>
@@ -397,6 +406,93 @@ export default function ConfigurationsPage() {
                           />
                         </div>
                       </div>
+                      {editableConfig.embeddingProvider === "custom" ? (
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="emb-base-url">Base URL</Label>
+                            <Input
+                              id="emb-base-url"
+                              value={editableConfig.embeddingBaseUrl ?? ""}
+                              onChange={(e) =>
+                                update("embeddingBaseUrl", e.target.value)
+                              }
+                              placeholder="https://api.example.com/v1"
+                              className="font-mono text-xs"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="emb-model-custom">Model</Label>
+                            <Input
+                              id="emb-model-custom"
+                              value={editableConfig.embeddingModel ?? ""}
+                              onChange={(e) =>
+                                update("embeddingModel", e.target.value)
+                              }
+                              placeholder="e.g. text-embedding-3-small"
+                              className="font-mono text-xs"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Embedding Model</Label>
+                            {(() => {
+                              const currentEmb = AI_EMBEDDING_PROVIDERS.find(
+                                (p) =>
+                                  p.id === editableConfig.embeddingProvider,
+                              );
+                              const modelItems = (currentEmb?.models ?? []).map(
+                                (m) => ({
+                                  label: `${m.name} (${m.dimensions}d)`,
+                                  value: m.id,
+                                }),
+                              );
+                              const selected =
+                                modelItems.find(
+                                  (m) =>
+                                    m.value === editableConfig.embeddingModel,
+                                ) ?? null;
+                              return (
+                                <Select
+                                  value={selected}
+                                  onValueChange={(item) => {
+                                    if (item)
+                                      update("embeddingModel", item.value);
+                                  }}
+                                  items={modelItems}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue>
+                                      {(item: { label: string } | null) =>
+                                        item ? (
+                                          <span>{item.label}</span>
+                                        ) : (
+                                          <span className="text-muted-foreground">
+                                            Default model
+                                          </span>
+                                        )
+                                      }
+                                    </SelectValue>
+                                  </SelectTrigger>
+                                  <SelectContent alignItemWithTrigger={false}>
+                                    <SelectGroup>
+                                      {modelItems.map((item) => (
+                                        <SelectItem
+                                          key={item.value}
+                                          value={item}
+                                        >
+                                          {item.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectGroup>
+                                  </SelectContent>
+                                </Select>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      )}
 
                       <div className="h-px bg-border" />
 
@@ -405,11 +501,18 @@ export default function ConfigurationsPage() {
                         <div className="space-y-2">
                           <Label>Provider</Label>
                           {(() => {
-                            const llmProviders = AI_LLM_PROVIDERS.map((p) => ({
-                              label: p.name,
-                              value: p.id,
-                              icon: <ProviderIcon providerId={p.id} />,
-                            }));
+                            const llmProviders = [
+                              ...AI_LLM_PROVIDERS.map((p) => ({
+                                label: p.name,
+                                value: p.id,
+                                icon: <ProviderIcon providerId={p.id} />,
+                              })),
+                              {
+                                label: "Custom (OpenAI-compatible)",
+                                value: "custom",
+                                icon: <ProviderIcon providerId="custom" />,
+                              },
+                            ];
                             const selected =
                               llmProviders.find(
                                 (p) => p.value === editableConfig.llmProvider,
@@ -519,6 +622,20 @@ export default function ConfigurationsPage() {
                           );
                         })()}
                       </div>
+                      {editableConfig.llmProvider === "custom" && (
+                        <div className="space-y-2">
+                          <Label htmlFor="llm-base-url">Base URL</Label>
+                          <Input
+                            id="llm-base-url"
+                            value={editableConfig.llmBaseUrl ?? ""}
+                            onChange={(e) =>
+                              update("llmBaseUrl", e.target.value)
+                            }
+                            placeholder="https://api.example.com/v1"
+                            className="font-mono text-xs"
+                          />
+                        </div>
+                      )}
 
                       <Button
                         className="gap-2"
@@ -526,9 +643,12 @@ export default function ConfigurationsPage() {
                           handleSave({
                             embeddingProvider: editableConfig.embeddingProvider,
                             embeddingApiKey: editableConfig.embeddingApiKey,
+                            embeddingModel: editableConfig.embeddingModel,
+                            embeddingBaseUrl: editableConfig.embeddingBaseUrl,
                             llmProvider: editableConfig.llmProvider,
                             llmApiKey: editableConfig.llmApiKey,
                             llmModel: editableConfig.llmModel,
+                            llmBaseUrl: editableConfig.llmBaseUrl,
                           })
                         }
                         disabled={saving}

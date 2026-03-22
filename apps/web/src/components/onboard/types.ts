@@ -10,7 +10,10 @@ export interface OnboardingFormData {
   databaseUrl: string;
   embeddingProvider: string;
   embeddingApiKey: string;
+  embeddingModel: string;
+  embeddingBaseUrl: string;
   llmProvider: string;
   llmApiKey: string;
   llmModel: string;
+  llmBaseUrl: string;
 }

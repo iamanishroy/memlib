@@ -15,7 +15,7 @@ export const openaiCompatibleText: GenerateTextFn = async (
   apiKey,
   model,
   baseUrl,
-  options,
+  _options,
 ) => {
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
@@ -26,8 +26,6 @@ export const openaiCompatibleText: GenerateTextFn = async (
     body: JSON.stringify({
       model,
       messages: [{ role: "user", content: prompt }],
-      temperature: options?.temperature ?? 0.1,
-      max_tokens: options?.maxTokens ?? 1024,
     }),
   });
 

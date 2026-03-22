@@ -35,3 +35,10 @@ export {
 
 // ─── Logos ────────────────────────────────────────────────────────
 export { PROVIDER_LOGOS } from "./logos";
+
+// ─── Validation ──────────────────────────────────────────────────
+export {
+  validateLLMApiKey,
+  validateEmbeddingApiKey,
+  type ValidationResult,
+} from "./validate";

@@ -324,16 +324,29 @@ export async function POST(
   }
 
   const { createMemoryService } = await import("@memlib/memory");
+  const { getEmbeddingProvider } = await import("@memlib/ai");
+
+  // Resolve embedding dimensions from the selected model
+  const embProvider = getEmbeddingProvider(project.embeddingProvider);
+  const embModel = project.embeddingModel
+    ? embProvider?.models.find((m) => m.id === project.embeddingModel)
+    : embProvider?.models.find((m) => m.default) ?? embProvider?.models[0];
+  const dimensions = embModel?.dimensions ?? 1536;
+
   const memoryService = createMemoryService({
     database: { connectionString: project.databaseUrl },
     embedding: {
-      provider: project.embeddingProvider as "gemini" | "openai",
+      provider: project.embeddingProvider,
       apiKey: project.embeddingApiKey,
+      model: project.embeddingModel ?? undefined,
+      baseUrl: project.embeddingBaseUrl ?? undefined,
+      dimensions,
     },
     llm: {
-      provider: project.llmProvider as "gemini" | "openai" | "anthropic",
+      provider: project.llmProvider,
       apiKey: project.llmApiKey,
-      model: project.llmModel ?? undefined,
+      model: project.llmModel,
+      baseUrl: project.llmBaseUrl ?? undefined,
     },
   });
 

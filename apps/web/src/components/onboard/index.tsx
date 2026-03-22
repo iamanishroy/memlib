@@ -22,9 +22,12 @@ export function Onboarding() {
   const [databaseUrl, setDatabaseUrl] = useState("");
   const [embeddingProvider, setEmbeddingProvider] = useState("");
   const [embeddingApiKey, setEmbeddingApiKey] = useState("");
+  const [embeddingModel, setEmbeddingModel] = useState("");
+  const [embeddingBaseUrl, setEmbeddingBaseUrl] = useState("");
   const [llmProvider, setLlmProvider] = useState("");
   const [llmApiKey, setLlmApiKey] = useState("");
   const [llmModel, setLlmModel] = useState("");
+  const [llmBaseUrl, setLlmBaseUrl] = useState("");
 
   const [migrating, setMigrating] = useState(false);
   const [migrationError, setMigrationError] = useState<string | null>(null);
@@ -107,9 +110,12 @@ export function Onboarding() {
           databaseUrl,
           embeddingProvider,
           embeddingApiKey,
+          embeddingModel: embeddingModel || undefined,
+          embeddingBaseUrl: embeddingBaseUrl || undefined,
           llmProvider,
           llmApiKey,
           llmModel,
+          llmBaseUrl: llmBaseUrl || undefined,
         }),
       });
       if (!createRes.ok) {
@@ -156,8 +162,15 @@ export function Onboarding() {
           <StepEmbedding
             provider={embeddingProvider}
             apiKey={embeddingApiKey}
-            onProviderChange={setEmbeddingProvider}
+            model={embeddingModel}
+            baseUrl={embeddingBaseUrl}
+            onProviderChange={(v) => {
+              setEmbeddingProvider(v);
+              setEmbeddingModel("");
+            }}
             onApiKeyChange={setEmbeddingApiKey}
+            onModelChange={setEmbeddingModel}
+            onBaseUrlChange={setEmbeddingBaseUrl}
             onContinue={() => advanceToNext("embedding")}
           />
         );
@@ -167,9 +180,11 @@ export function Onboarding() {
             provider={llmProvider}
             apiKey={llmApiKey}
             model={llmModel}
+            baseUrl={llmBaseUrl}
             onProviderChange={setLlmProvider}
             onApiKeyChange={setLlmApiKey}
             onModelChange={setLlmModel}
+            onBaseUrlChange={setLlmBaseUrl}
             onContinue={() => advanceToNext("llm")}
           />
         );

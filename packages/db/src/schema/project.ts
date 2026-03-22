@@ -14,9 +14,12 @@ export const project = pgTable(
     databaseUrl: text("databaseUrl").notNull(),
     embeddingProvider: text("embeddingProvider").notNull(),
     embeddingApiKey: text("embeddingApiKey").notNull(),
+    embeddingModel: text("embeddingModel"),
+    embeddingBaseUrl: text("embeddingBaseUrl"),
     llmProvider: text("llmProvider").notNull(),
     llmApiKey: text("llmApiKey").notNull(),
     llmModel: text("llmModel").notNull(),
+    llmBaseUrl: text("llmBaseUrl"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt")
       .defaultNow()

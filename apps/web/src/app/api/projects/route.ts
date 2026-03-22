@@ -40,9 +40,12 @@ export async function POST(req: Request) {
     databaseUrl,
     embeddingProvider,
     embeddingApiKey,
+    embeddingModel,
+    embeddingBaseUrl,
     llmProvider,
     llmApiKey,
     llmModel,
+    llmBaseUrl,
   } = body;
 
   if (
@@ -68,9 +71,12 @@ export async function POST(req: Request) {
       databaseUrl,
       embeddingProvider,
       embeddingApiKey,
+      embeddingModel: embeddingModel || null,
+      embeddingBaseUrl: embeddingBaseUrl || null,
       llmProvider,
       llmApiKey,
       llmModel,
+      llmBaseUrl: llmBaseUrl || null,
     })
     .returning();
 
