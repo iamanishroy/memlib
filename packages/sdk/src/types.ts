@@ -179,9 +179,21 @@ export interface DiffResult {
     id: string;
     content: string;
     previousContent: string;
+    category: string | null;
     updatedAt: string;
   }[];
   deleted: { id: string; content: string; deletedAt: string }[];
+  replaced: {
+    oldId: string;
+    oldContent: string;
+    newId: string;
+    newContent: string;
+    category: string | null;
+    reason: string;
+    replacedAt: string;
+  }[];
   since: string;
   changeCount: number;
+  /** Human-readable summary of the net changes */
+  summary: string;
 }

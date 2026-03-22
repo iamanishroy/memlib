@@ -151,31 +151,42 @@ const systemPrompt = `You are a helpful assistant.\n\nAbout this user:\n${ctx.co
 
 ### `mem.diff(options)` → `DiffResult`
 
-**Memory changelog.** Returns what changed since a given timestamp — new memories created, existing memories updated (via conflict resolution), and deleted memories. **Zero LLM calls**, pure SQL query on the audit trail. Typically completes in <20ms.
+**Memory changelog.** Returns what changed since a given timestamp — new memories created, updates, deletions, and **contradictions** (preference changes). **Zero LLM calls**, pure SQL query on the audit trail. Typically completes in <20ms.
 
 ```typescript
 const diff = await mem.diff({
   since: "2024-03-20T10:00:00Z",
 });
 
-console.log(diff.created);
-// → [{ id: "mem_1", content: "Started learning piano", createdAt: "2024-03-21T09:00:00Z" }]
+console.log(diff.summary); // "1 new, 1 replaced"
 
-console.log(diff.updated);
-// → [{ id: "mem_2", content: "Lives in Tokyo", previousContent: "Lives in Berlin", updatedAt: "..." }]
+// New memories
+diff.created; // [{ id, content, category, createdAt }]
 
-console.log(diff.deleted);
-// → []
+// Updated memories (merged/refined)
+diff.updated; // [{ id, content, previousContent, category, updatedAt }]
 
-console.log(diff.changeCount); // 2
+// Preference changes — old memory contradicted by new one
+diff.replaced;
+// [{ oldId, oldContent: "Likes vanilla ice cream",
+//    newId, newContent: "No longer likes vanilla ice cream",
+//    category: "preference", reason: "contradiction", replacedAt }]
+
+// Pure deletions
+diff.deleted; // [{ id, content, deletedAt }]
 
 // Use it to make your agent aware of changes:
 if (diff.changeCount > 0) {
-  const changes = diff.updated
-    .map((u) => `Changed: "${u.previousContent}" → "${u.content}"`)
-    .concat(diff.created.map((c) => `New: ${c.content}`))
-    .join("\n");
-  systemPrompt += `\n\nRecent changes since last session:\n${changes}`;
+  const lines = [
+    ...diff.replaced.map(
+      (r) => `Changed: "${r.oldContent}" → "${r.newContent}"`,
+    ),
+    ...diff.created.map((c) => `New: ${c.content}`),
+    ...diff.updated.map(
+      (u) => `Updated: "${u.previousContent}" → "${u.content}"`,
+    ),
+  ];
+  systemPrompt += `\n\nRecent changes:\n${lines.join("\n")}`;
 }
 ```
 
@@ -184,7 +195,7 @@ if (diff.changeCount > 0) {
 | `since`     | `string` | —                   | **Required.** ISO timestamp — return changes after this time |
 | `namespace` | `string` | constructor default | Namespace override                                           |
 | `entity`    | `string` | constructor default | Entity override                                              |
-| `limit`     | `number` | `100`               | Max events to return                                         |
+| `limit`     | `number` | `200`               | Max events to return                                         |
 
 ### `mem.list(options?)` → `Memory[]`
 
