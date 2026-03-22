@@ -40,7 +40,7 @@ function MermaidContent({ chart }: { chart: string }) {
     startOnLoad: false,
     securityLevel: "loose",
     fontFamily: "inherit",
-    themeCSS: "margin: 1.5rem auto 0;",
+    themeCSS: "margin: 1.5rem auto 0; .nodeLabel { font-size: 14px; }",
     theme: resolvedTheme === "dark" ? "dark" : "default",
   });
 

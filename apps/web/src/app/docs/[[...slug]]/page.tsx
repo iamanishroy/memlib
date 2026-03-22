@@ -21,14 +21,14 @@ export default async function Page(props: {
 
   return (
     <DocsPage toc={page.data.toc} full={page.data.full}>
-      <DocsTitle>{page.data.title}</DocsTitle>
-      <DocsDescription className="flex items-center justify-between gap-4">
-        <span>{page.data.description}</span>
+      <div className="flex items-center justify-between gap-4">
+        <DocsTitle className="!text-2xl !font-bold !tracking-tight">{page.data.title}</DocsTitle>
         <CopyMarkdown
           title={page.data.title}
           slug={params.slug ?? []}
         />
-      </DocsDescription>
+      </div>
+      <DocsDescription className="!text-sm">{page.data.description}</DocsDescription>
       <DocsBody>
         <MDXContent components={{ ...defaultMdxComponents, Mermaid }} />
       </DocsBody>
