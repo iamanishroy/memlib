@@ -1,0 +1,71 @@
+---
+title: Quickstart
+description: Get started with MemLib in under 5 minutes
+---
+
+## 1. Create a Project
+
+Sign up at [mem.anishroy.com](https://mem.anishroy.com) and create a new project from the dashboard. You'll need to provide:
+
+- A **PostgreSQL database URL** (your own database where memories are stored)
+- An **embedding provider** (Gemini or OpenAI) with API key
+- An **LLM provider** (Gemini, OpenAI, or Anthropic) with API key
+
+## 2. Generate an API Key
+
+From your project's **API Keys** page, create a new key with **Read & Write** permission. Copy the key — you'll only see it once.
+
+## 3. Install the SDK
+
+```bash
+npm install memlib
+```
+
+## 4. Initialize & Store
+
+```ts
+import { MemLib } from "memlib";
+
+const memlib = new MemLib({
+  apiKey: "sk_your_api_key",
+  namespace: "my-app",
+  entity: "user-123",
+});
+
+// Store a memory (with LLM fact extraction)
+const result = await memlib.store({
+  content: "I prefer dark mode and use TypeScript for all my projects",
+});
+
+console.log(result.memories);
+// → [{ content: "Prefers dark mode", ... }, { content: "Uses TypeScript", ... }]
+```
+
+## 5. Recall Memories
+
+```ts
+const memories = await memlib.recall({
+  query: "What programming language does the user prefer?",
+});
+
+console.log(memories);
+// → [{ content: "Uses TypeScript for all projects", similarity: 0.92, ... }]
+```
+
+## 6. Prepare Context (for System Prompts)
+
+```ts
+const { context } = await memlib.prepare({
+  messages: [
+    { role: "user", content: "Help me set up a new project" },
+  ],
+});
+
+// Inject into your LLM's system prompt:
+const systemPrompt = `You are a helpful assistant.\n\nUser context:\n${context}`;
+```
+
+## Next Steps
+
+- [SDK Reference](/docs/sdk) — All methods and options
+- [API Reference](/docs/api-reference) — REST endpoints

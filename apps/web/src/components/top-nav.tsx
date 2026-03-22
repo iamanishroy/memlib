@@ -41,9 +41,7 @@ export function TopNav() {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 shrink-0">
           <Logo className="h-5 w-5 text-primary" />
-          <span className="font-semibold text-sm hidden sm:inline">
-            MemLib
-          </span>
+          <span className="font-semibold text-sm hidden sm:inline">MemLib</span>
         </Link>
 
         {/* Divider */}
@@ -87,8 +85,8 @@ export function TopNav() {
         {/* Docs + Theme Toggle + User Menu */}
         <a
           href="/docs"
-          target="_blank"
-          rel="noopener noreferrer"
+          // target="_blank"
+          // rel="noopener noreferrer"
           className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           Docs

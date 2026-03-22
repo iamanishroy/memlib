@@ -27,6 +27,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "collections/*": [
+        "./.source/*"
       ]
     },
     "types": []

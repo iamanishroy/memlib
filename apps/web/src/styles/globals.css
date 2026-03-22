@@ -1,7 +1,10 @@
 @import "tailwindcss";
+@import "fumadocs-ui/css/shadcn.css";
+@import "fumadocs-ui/css/preset.css";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @source "../**/*.{ts,tsx}";
+@source "../../node_modules/fumadocs-ui/dist/**/*.js";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -195,4 +198,55 @@
   html {
     @apply font-sans;
   }
+}
+
+/* ── Fumadocs Overrides ─────────────────────────────────── */
+
+/* Remap fd-secondary away from our teal --secondary to a neutral */
+:root,
+.dark {
+  --color-fd-secondary: var(--muted);
+  --color-fd-secondary-foreground: var(--foreground);
+}
+
+#nd-sidebar {
+  --color-fd-secondary: var(--sidebar);
+  --color-fd-secondary-foreground: var(--sidebar-foreground);
+}
+
+:root {
+  --fd-font-size-base: 0.875rem;
+}
+
+/* Docs content typography */
+.fd-body {
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+.fd-body h1 {
+  font-size: 1.75rem;
+}
+
+.fd-body h2 {
+  font-size: 1.35rem;
+}
+
+.fd-body h3 {
+  font-size: 1.1rem;
+}
+
+/* Title on docs page */
+[data-docs-page-title] {
+  font-size: 1.75rem !important;
+}
+
+/* Sidebar text smaller */
+.fd-sidebar {
+  font-size: 0.8125rem;
+}
+
+/* TOC sidebar text */
+.fd-toc {
+  font-size: 0.8125rem;
 }

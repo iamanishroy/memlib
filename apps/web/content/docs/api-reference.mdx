@@ -1,0 +1,200 @@
+---
+title: API Reference
+description: REST API endpoints for MemLib
+---
+
+All API endpoints require an API key passed via the `Authorization` header:
+
+```
+Authorization: Bearer sk_your_api_key
+```
+
+Base URL: `https://mem.anishroy.com/api/v1`
+
+---
+
+## Store Memory
+
+```
+POST /memory
+```
+
+Store a single memory with optional LLM fact extraction.
+
+### Request Body
+
+```json
+{
+  "namespace": "my-app",
+  "entity": "user-123",
+  "content": "I prefer dark mode and use TypeScript",
+  "infer": true,
+  "tags": ["preferences"],
+  "metadata": { "source": "chat" },
+  "ttl": 86400
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `namespace` | `string` | ✅ | Memory namespace |
+| `entity` | `string` | ✅ | Entity identifier |
+| `content` | `string` | ✅ | Text content to store |
+| `infer` | `boolean` | — | Extract facts via LLM (default: `true`) |
+| `tags` | `string[]` | — | Tags for categorization |
+| `metadata` | `object` | — | Arbitrary metadata |
+| `source` | `string` | — | Source identifier |
+| `ttl` | `number` | — | Time-to-live in seconds |
+
+### Response
+
+```json
+{
+  "memories": [
+    {
+      "id": "uuid",
+      "content": "Prefers dark mode",
+      "category": "preference",
+      "importance": 0.7,
+      "event": "ADD"
+    }
+  ],
+  "skipped": 0,
+  "conflicts": 0
+}
+```
+
+---
+
+## Semantic Recall
+
+```
+POST /memory/recall
+```
+
+Search memories by semantic similarity.
+
+### Request Body
+
+```json
+{
+  "namespace": "my-app",
+  "entity": "user-123",
+  "query": "What theme does the user prefer?",
+  "limit": 10,
+  "category": "preference",
+  "minImportance": 0.5
+}
+```
+
+### Response
+
+```json
+[
+  {
+    "id": "uuid",
+    "content": "Prefers dark mode",
+    "similarity": 0.92,
+    "importance": 0.7,
+    "score": 0.85
+  }
+]
+```
+
+---
+
+## Prepare Context
+
+```
+POST /memory/prepare
+```
+
+Context-aware synthesis. Analyzes conversation, retrieves relevant memories, returns a synthesized briefing.
+
+### Request Body
+
+```json
+{
+  "namespace": "my-app",
+  "entity": "user-123",
+  "messages": [
+    { "role": "user", "content": "Help me set up my workspace" }
+  ],
+  "maxCandidates": 20,
+  "maxTokens": 500
+}
+```
+
+### Response
+
+```json
+{
+  "context": "The user prefers dark mode and uses TypeScript...",
+  "memoriesUsed": ["uuid-1", "uuid-2"],
+  "candidatesConsidered": 15,
+  "tokenCount": 127
+}
+```
+
+---
+
+## List Memories
+
+```
+GET /memory?namespace=my-app&entity=user-123&limit=50
+```
+
+---
+
+## Delete Memory
+
+```
+DELETE /memory/{memoryId}
+```
+
+---
+
+## Batch Store
+
+```
+POST /memory/batch
+```
+
+```json
+{
+  "namespace": "my-app",
+  "entity": "user-123",
+  "memories": [
+    { "content": "Likes coffee" },
+    { "content": "Works remotely" }
+  ]
+}
+```
+
+---
+
+## Migrate
+
+```
+POST /memory/migrate
+```
+
+Set up the memories table and pgvector extension. Requires **Admin** permission.
+
+---
+
+## Health Check
+
+```
+GET /health
+```
+
+---
+
+## Permission Levels
+
+| Level | Name | Access |
+|-------|------|--------|
+| 1 | Read | list, recall, health, events |
+| 2 | Read & Write | + store, smartStore, batchStore |
+| 3 | Admin | + delete, consolidate, migrate |
