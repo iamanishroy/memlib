@@ -7,14 +7,19 @@ export interface MemoryConfig {
     connectionString: string;
   };
   embedding: {
-    provider: "gemini" | "openai";
-    apiKey: string;
-    dimensions?: number;
-  };
-  llm: {
-    provider: "gemini" | "openai" | "anthropic";
+    provider: string;
     apiKey: string;
     model?: string;
+    dimensions?: number;
+    baseUrl?: string;
+  };
+  llm: {
+    provider: string;
+    apiKey: string;
+    model?: string;
+    baseUrl?: string;
+    temperature?: number;
+    maxTokens?: number;
   };
 }
 

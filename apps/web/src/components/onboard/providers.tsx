@@ -1,9 +1,32 @@
+import {
+  LLM_PROVIDERS as AI_LLM_PROVIDERS,
+  EMBEDDING_PROVIDERS as AI_EMBEDDING_PROVIDERS,
+  PROVIDER_LOGOS,
+} from "@memlib/ai";
 import type { ReactNode } from "react";
-import llmModelsData from "@/lib/llm-models.json";
 
-function ProviderIcon({ src, alt }: { src: string; alt: string }) {
-  return <img src={src} alt={alt} className="size-4 shrink-0" loading="lazy" />;
+// ─── SVG Logo Renderer ───────────────────────────────────────────
+
+function ProviderLogo({
+  providerId,
+  className = "size-4",
+}: {
+  providerId: string;
+  className?: string;
+}) {
+  const url = PROVIDER_LOGOS[providerId];
+  if (!url) return null;
+  return (
+    <img
+      src={url}
+      alt=""
+      className={`${className} shrink-0`}
+      loading="lazy"
+    />
+  );
 }
+
+// ─── Shared Types ────────────────────────────────────────────────
 
 export interface Provider {
   id: string;
@@ -15,38 +38,27 @@ export interface LlmProvider extends Provider {
   models: { id: string; name: string }[];
 }
 
-const ICON_URLS: Record<string, string> = {
-  openai:
-    "https://static.vecteezy.com/system/resources/previews/022/227/364/non_2x/openai-chatgpt-logo-icon-free-png.png",
-  gemini:
-    "https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/dark/gemini-color.png",
-  anthropic:
-    "https://golden-storage-production.golden-support.com/topic_images/2eb79382ad63416682dcc08c91fcc46f.png",
-};
+export interface EmbeddingProviderUI extends Provider {
+  models: { id: string; name: string; dimensions: number }[];
+}
 
-export const EMBEDDING_PROVIDERS: Provider[] = [
-  {
-    id: "gemini",
-    name: "Google Gemini",
-    icon: <ProviderIcon src={ICON_URLS.gemini!} alt="Gemini" />,
-  },
-  {
-    id: "openai",
-    name: "OpenAI",
-    icon: <ProviderIcon src={ICON_URLS.openai!} alt="OpenAI" />,
-  },
-];
+// ─── Build from @memlib/ai registries ────────────────────────────
 
-export const LLM_PROVIDERS: LlmProvider[] = Object.entries(llmModelsData).map(
-  ([id, data]) => ({
-    id,
-    name: data.name,
-    icon: (
-      <ProviderIcon
-        src={ICON_URLS[id] ?? `https://cdn.simpleicons.org/${id}`}
-        alt={data.name}
-      />
-    ),
-    models: data.models,
-  }),
-);
+export const LLM_PROVIDERS: LlmProvider[] = AI_LLM_PROVIDERS.map((p) => ({
+  id: p.id,
+  name: p.name,
+  icon: <ProviderLogo providerId={p.id} />,
+  models: p.models.map((m) => ({ id: m.id, name: m.name })),
+}));
+
+export const EMBEDDING_PROVIDERS: EmbeddingProviderUI[] =
+  AI_EMBEDDING_PROVIDERS.map((p) => ({
+    id: p.id,
+    name: p.name,
+    icon: <ProviderLogo providerId={p.id} />,
+    models: p.models.map((m) => ({
+      id: m.id,
+      name: m.name,
+      dimensions: m.dimensions,
+    })),
+  }));

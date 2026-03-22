@@ -1,0 +1,17 @@
+{
+  "name": "@memlib/ai",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@memlib/config": "*",
+    "typescript": "^5"
+  }
+}

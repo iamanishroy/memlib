@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.0.0",
+    "@memlib/ai": "*",
     "@memlib/api": "*",
     "@memlib/db": "*",
     "@orpc/client": "^1.12.2",

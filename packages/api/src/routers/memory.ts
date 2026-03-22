@@ -26,11 +26,11 @@ async function getMemoryService(
     return createMemoryService({
       database: { connectionString: proj.databaseUrl },
       embedding: {
-        provider: proj.embeddingProvider as "gemini" | "openai",
+        provider: proj.embeddingProvider,
         apiKey: proj.embeddingApiKey,
       },
       llm: {
-        provider: proj.llmProvider as "gemini" | "openai" | "anthropic",
+        provider: proj.llmProvider,
         apiKey: proj.llmApiKey,
         model: proj.llmModel,
       },

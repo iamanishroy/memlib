@@ -65,6 +65,11 @@ export function StepEmbedding({
           placeholder="sk-..."
           className="mt-1.5 font-mono text-xs !bg-card border-border/60"
         />
+        {selected && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Uses {selected.models[0]?.name ?? "default model"} ({selected.models[0]?.dimensions ?? 1536}d)
+          </p>
+        )}
       </div>
       <Button
         size="sm"

@@ -7,10 +7,10 @@ import { useRouter } from "next/navigation";
 import { useProject } from "../layout";
 import { cn } from "@/lib/utils";
 import {
-  GeminiIcon,
-  OpenAIIcon,
-  AnthropicIcon,
-} from "@/components/onboard/icons";
+  LLM_PROVIDERS as AI_LLM_PROVIDERS,
+  EMBEDDING_PROVIDERS as AI_EMBEDDING_PROVIDERS,
+  PROVIDER_LOGOS,
+} from "@memlib/ai";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,6 +39,12 @@ import {
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────
+
+function ProviderIcon({ providerId }: { providerId: string }) {
+  const url = PROVIDER_LOGOS[providerId];
+  if (!url) return null;
+  return <img src={url} alt="" className="size-4 shrink-0" loading="lazy" />;
+}
 
 interface ProjectConfig {
   id: string;
@@ -324,18 +330,12 @@ export default function ConfigurationsPage() {
                         <div className="space-y-2">
                           <Label>Provider</Label>
                           {(() => {
-                            const embeddingProviders = [
-                              {
-                                label: "Gemini",
-                                value: "gemini",
-                                icon: <GeminiIcon />,
-                              },
-                              {
-                                label: "OpenAI",
-                                value: "openai",
-                                icon: <OpenAIIcon />,
-                              },
-                            ];
+                            const embeddingProviders =
+                              AI_EMBEDDING_PROVIDERS.map((p) => ({
+                                label: p.name,
+                                value: p.id,
+                                icon: <ProviderIcon providerId={p.id} />,
+                              }));
                             const selected =
                               embeddingProviders.find(
                                 (p) =>
@@ -405,23 +405,11 @@ export default function ConfigurationsPage() {
                         <div className="space-y-2">
                           <Label>Provider</Label>
                           {(() => {
-                            const llmProviders = [
-                              {
-                                label: "Gemini",
-                                value: "gemini",
-                                icon: <GeminiIcon />,
-                              },
-                              {
-                                label: "OpenAI",
-                                value: "openai",
-                                icon: <OpenAIIcon />,
-                              },
-                              {
-                                label: "Anthropic",
-                                value: "anthropic",
-                                icon: <AnthropicIcon />,
-                              },
-                            ];
+                            const llmProviders = AI_LLM_PROVIDERS.map((p) => ({
+                              label: p.name,
+                              value: p.id,
+                              icon: <ProviderIcon providerId={p.id} />,
+                            }));
                             const selected =
                               llmProviders.find(
                                 (p) => p.value === editableConfig.llmProvider,
@@ -482,13 +470,54 @@ export default function ConfigurationsPage() {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="model">Model</Label>
-                        <Input
-                          id="model"
-                          placeholder="e.g. gpt-4o, gemini-2.0-flash"
-                          value={editableConfig.llmModel}
-                          onChange={(e) => update("llmModel", e.target.value)}
-                        />
+                        <Label>Model</Label>
+                        {(() => {
+                          const currentLlm = AI_LLM_PROVIDERS.find(
+                            (p) => p.id === editableConfig.llmProvider,
+                          );
+                          const modelItems = (currentLlm?.models ?? []).map(
+                            (m) => ({
+                              label: m.name,
+                              value: m.id,
+                            }),
+                          );
+                          const selected =
+                            modelItems.find(
+                              (m) => m.value === editableConfig.llmModel,
+                            ) ?? null;
+                          return (
+                            <Select
+                              value={selected}
+                              onValueChange={(item) => {
+                                if (item) update("llmModel", item.value);
+                              }}
+                              items={modelItems}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue>
+                                  {(item: { label: string } | null) =>
+                                    item ? (
+                                      <span>{item.label}</span>
+                                    ) : (
+                                      <span className="text-muted-foreground">
+                                        Select model
+                                      </span>
+                                    )
+                                  }
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent alignItemWithTrigger={false}>
+                                <SelectGroup>
+                                  {modelItems.map((item) => (
+                                    <SelectItem key={item.value} value={item}>
+                                      {item.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                          );
+                        })()}
                       </div>
 
                       <Button

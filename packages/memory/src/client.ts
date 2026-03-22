@@ -2,8 +2,7 @@ import pg from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import type { MemoryConfig, MemoryDeps } from "./config";
 import * as schema from "./db/schema";
-import { createEmbeddingFn } from "./services/embedding";
-import { createTextFn } from "./services/llm";
+import { createEmbedding, createLLM } from "@memlib/ai";
 import {
   storeMemory as _storeMemory,
   storeSmartMemory as _storeSmartMemory,
@@ -155,8 +154,8 @@ export function createMemoryService(config: MemoryConfig): MemoryService {
   });
 
   const db = drizzle(pool, { schema });
-  const generateEmbedding = createEmbeddingFn(config.embedding);
-  const generateText = createTextFn(config.llm);
+  const generateEmbedding = createEmbedding(config.embedding);
+  const generateText = createLLM(config.llm);
 
   const deps: MemoryDeps = { pool, db, generateEmbedding, generateText };
 

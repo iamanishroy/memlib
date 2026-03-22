@@ -90,13 +90,8 @@ async function main() {
     process.exit(1);
   }
 
-  const embeddingProvider = (process.env.EMBEDDING_PROVIDER ?? "gemini") as
-    | "gemini"
-    | "openai";
-  const llmProvider = (process.env.LLM_PROVIDER ?? "gemini") as
-    | "gemini"
-    | "openai"
-    | "anthropic";
+  const embeddingProvider = process.env.EMBEDDING_PROVIDER ?? "gemini";
+  const llmProvider = process.env.LLM_PROVIDER ?? "gemini";
 
   // ── Create service ──────────────────────────────────────────
   const memory = createMemoryService({
