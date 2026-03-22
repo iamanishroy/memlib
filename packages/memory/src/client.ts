@@ -30,6 +30,11 @@ import {
   type PrepareOptions,
   type PrepareResult,
 } from "./services/synthesis";
+import {
+  getMemoryDiff as _getMemoryDiff,
+  type DiffOptions,
+  type DiffResult,
+} from "./services/diff";
 
 const { Pool } = pg;
 
@@ -97,10 +102,7 @@ export interface MemoryService {
   ): Promise<RetrievedMemory[]>;
 
   /** Consolidate old memories (category-aware grouping) */
-  consolidate(
-    ageDays?: number,
-    limit?: number,
-  ): Promise<ConsolidationResult[]>;
+  consolidate(ageDays?: number, limit?: number): Promise<ConsolidationResult[]>;
 
   /** Get audit trail events for a namespace */
   events(
@@ -121,6 +123,16 @@ export interface MemoryService {
     messages: Message[],
     options?: PrepareOptions,
   ): Promise<PrepareResult>;
+
+  /**
+   * Memory diff — returns changes since a given timestamp.
+   * Zero LLM calls, pure SQL on the audit trail.
+   */
+  diff(
+    namespace: string,
+    entity: string,
+    options: DiffOptions,
+  ): Promise<DiffResult>;
 
   /** Run migrations to set up the memories table + pgvector */
   migrate(): Promise<void>;
@@ -179,14 +191,16 @@ export function createMemoryService(config: MemoryConfig): MemoryService {
     recall: (namespace, entity, query, options) =>
       _retrieveMemories(deps, namespace, entity, query, options),
 
-    consolidate: (ageDays, limit) =>
-      _consolidateMemories(deps, ageDays, limit),
+    consolidate: (ageDays, limit) => _consolidateMemories(deps, ageDays, limit),
 
     events: (namespace, memoryId, limit) =>
       _getMemoryEvents(deps, namespace, memoryId, limit),
 
     prepare: (namespace, entity, messages, options) =>
       _prepareContext(deps, namespace, entity, messages, options),
+
+    diff: (namespace, entity, options) =>
+      _getMemoryDiff(deps, namespace, entity, options),
 
     async migrate() {
       // Enable pgvector extension
@@ -249,6 +263,10 @@ export function createMemoryService(config: MemoryConfig): MemoryService {
       await pool.query(`
         CREATE INDEX IF NOT EXISTS idx_memory_events_namespace
         ON memory_events (namespace)
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_memory_events_ns_entity_created
+        ON memory_events (namespace, entity, created_at)
       `);
 
       // Add new columns if they don't exist (safe for existing tables)

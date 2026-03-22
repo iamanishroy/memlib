@@ -41,3 +41,4 @@ export type {
   PrepareOptions,
   PrepareResult,
 } from "./services/synthesis";
+export type { DiffOptions, DiffResult } from "./services/diff";
