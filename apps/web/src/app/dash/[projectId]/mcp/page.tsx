@@ -117,6 +117,16 @@ const TOOLS = [
   },
 ];
 
+// ─── Constants ────────────────────────────────────────────────────
+
+const TOOL_NAMES = [
+  "store_memory",
+  "recall_memories",
+  "list_memories",
+  "prepare_context",
+  "diff_memories",
+] as const;
+
 // ─── Helpers ──────────────────────────────────────────────────────
 
 async function fetchApiKeys(projectId: string) {
@@ -138,6 +148,7 @@ function generateConfig(
   namespace: string,
   entity: string,
   baseUrl: string,
+  excludedTools: string[],
 ): string {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${apiKey}`,
@@ -145,7 +156,12 @@ function generateConfig(
   if (namespace) headers["X-MemLib-Namespace"] = namespace;
   if (entity) headers["X-MemLib-Entity"] = entity;
 
-  const serverEntry = { url: `${baseUrl}/api/mcp`, headers };
+  let url = `${baseUrl}/api/mcp`;
+  if (excludedTools.length > 0) {
+    url += `?excludeTools=${excludedTools.join(",")}`;
+  }
+
+  const serverEntry = { url, headers };
 
   // Generic: flat config. All others: wrapped in mcpServers.
   const config =
@@ -173,6 +189,7 @@ export default function McpPage() {
   const [testResult, setTestResult] = useState<"success" | "error" | null>(
     null,
   );
+  const [excludedTools, setExcludedTools] = useState<string[]>([]);
 
   useEffect(() => {
     if (!sessionPending && !session) router.push("/auth");
@@ -192,8 +209,15 @@ export default function McpPage() {
 
   const configJson = useMemo(() => {
     if (!apiKey.trim()) return "";
-    return generateConfig(client, apiKey.trim(), namespace, entity, baseUrl);
-  }, [client, apiKey, namespace, entity, baseUrl]);
+    return generateConfig(
+      client,
+      apiKey.trim(),
+      namespace,
+      entity,
+      baseUrl,
+      excludedTools,
+    );
+  }, [client, apiKey, namespace, entity, baseUrl, excludedTools]);
 
   const selectedPreset = CLIENT_PRESETS.find((p) => p.id === client)!;
 
@@ -394,6 +418,46 @@ export default function McpPage() {
               When set, the AI won&apos;t need to specify namespace/entity for
               each tool call (locked mode). Leave empty for dynamic routing.
             </p>
+
+            {/* Tool Filter */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">
+                Tools{" "}
+                <span className="text-muted-foreground font-normal">
+                  ({TOOL_NAMES.length - excludedTools.length} of{" "}
+                  {TOOL_NAMES.length} enabled)
+                </span>
+              </Label>
+              <div className="flex flex-wrap gap-1.5">
+                {TOOL_NAMES.map((tool) => {
+                  const excluded = excludedTools.includes(tool);
+                  return (
+                    <button
+                      key={tool}
+                      type="button"
+                      onClick={() =>
+                        setExcludedTools((prev) =>
+                          excluded
+                            ? prev.filter((t) => t !== tool)
+                            : [...prev, tool],
+                        )
+                      }
+                      className={cn(
+                        "rounded-md border px-2.5 py-1 text-xs font-mono transition-all cursor-pointer",
+                        excluded
+                          ? "border-border/50 bg-muted/30 text-muted-foreground line-through opacity-50"
+                          : "border-emerald-500/30 bg-emerald-500/5 text-foreground",
+                      )}
+                    >
+                      {tool}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Click to toggle. Excluded tools won&apos;t be visible to the AI.
+              </p>
+            </div>
 
             {/* Client selector */}
             <div className="space-y-1.5">

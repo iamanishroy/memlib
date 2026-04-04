@@ -10,6 +10,11 @@ export type Scope = {
   locked: boolean;
 };
 
+export type ToolFilter = {
+  include?: string[];
+  exclude?: string[];
+};
+
 type WithService = <T>(
   fn: (service: MemoryService) => Promise<T>,
 ) => Promise<T>;
@@ -71,16 +76,47 @@ function textResult(...texts: string[]) {
 
 // ─── Tool Registration ───────────────────────────────────────────
 
+export const ALL_TOOL_NAMES = [
+  "store_memory",
+  "recall_memories",
+  "list_memories",
+  "prepare_context",
+  "diff_memories",
+] as const;
+
+export type ToolName = (typeof ALL_TOOL_NAMES)[number];
+
+const TOOL_REGISTRARS: Record<
+  ToolName,
+  (server: McpServer, scope: Scope, withService: WithService) => void
+> = {
+  store_memory: registerStoreTool,
+  recall_memories: registerRecallTool,
+  list_memories: registerListTool,
+  prepare_context: registerPrepareTool,
+  diff_memories: registerDiffTool,
+};
+
 export function registerTools(
   server: McpServer,
   scope: Scope,
   withService: WithService,
+  filter: ToolFilter = {},
 ): void {
-  registerStoreTool(server, scope, withService);
-  registerRecallTool(server, scope, withService);
-  registerListTool(server, scope, withService);
-  registerPrepareTool(server, scope, withService);
-  registerDiffTool(server, scope, withService);
+  let tools = [...ALL_TOOL_NAMES] as ToolName[];
+
+  if (filter.include?.length) {
+    const includeSet = new Set(filter.include);
+    tools = tools.filter((t) => includeSet.has(t));
+  }
+  if (filter.exclude?.length) {
+    const excludeSet = new Set(filter.exclude);
+    tools = tools.filter((t) => !excludeSet.has(t));
+  }
+
+  for (const tool of tools) {
+    TOOL_REGISTRARS[tool](server, scope, withService);
+  }
 }
 
 // ─── store_memory ─────────────────────────────────────────────────

@@ -3,7 +3,7 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { resolveApiKey, type ApiKeyInfo } from "@memlib/api/context";
 import { createMemoryService, type MemoryService } from "@memlib/memory";
 import pg from "pg";
-import { registerTools, type Scope } from "@/lib/mcp/tools";
+import { registerTools, type Scope, type ToolFilter } from "@/lib/mcp/tools";
 
 const { Client } = pg;
 
@@ -72,6 +72,16 @@ function resolveScope(headers: Headers): Scope {
   return { namespace, entity, locked: !!(namespace && entity) };
 }
 
+function resolveToolFilter(url: string): ToolFilter {
+  const { searchParams } = new URL(url);
+  const include = searchParams.get("includeTools");
+  const exclude = searchParams.get("excludeTools");
+  return {
+    include: include ? include.split(",").map((s) => s.trim()) : undefined,
+    exclude: exclude ? exclude.split(",").map((s) => s.trim()) : undefined,
+  };
+}
+
 // ─── JSON-RPC Error Helpers ──────────────────────────────────────
 
 function jsonRpcError(code: number, message: string, status: number): Response {
@@ -86,6 +96,7 @@ function jsonRpcError(code: number, message: string, status: number): Response {
 async function handleMcpRequest(req: Request): Promise<Response> {
   const apiKey = await authenticate(req.headers);
   const scope = resolveScope(req.headers);
+  const toolFilter = resolveToolFilter(req.url);
   const databaseUrl = process.env.DATABASE_URL!;
 
   const server = new McpServer(
@@ -97,7 +108,7 @@ async function handleMcpRequest(req: Request): Promise<Response> {
     fn: (service: MemoryService) => Promise<T>,
   ): Promise<T> => withService(apiKey.projectId, databaseUrl, fn);
 
-  registerTools(server, scope, boundWithService);
+  registerTools(server, scope, boundWithService, toolFilter);
 
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
