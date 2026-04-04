@@ -69,7 +69,11 @@ async function authenticate(headers: Headers): Promise<ApiKeyInfo> {
 function resolveScope(headers: Headers): Scope {
   const namespace = headers.get("x-memlib-namespace");
   const entity = headers.get("x-memlib-entity");
-  return { namespace, entity, locked: !!(namespace && entity) };
+
+  if (namespace && entity) {
+    return { locked: true, namespace, entity };
+  }
+  return { locked: false, namespace: null, entity: null };
 }
 
 function resolveToolFilter(url: string): ToolFilter {
@@ -126,14 +130,14 @@ export async function POST(req: Request): Promise<Response> {
     return await handleMcpRequest(req);
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Internal server error";
+      error instanceof Error ? error.message : "";
 
     if (message === "Unauthorized") {
       return jsonRpcError(-32001, "Unauthorized — invalid API key", 401);
     }
 
     console.error("[MCP] Error:", error);
-    return jsonRpcError(-32603, message, 500);
+    return jsonRpcError(-32603, "Internal server error", 500);
   }
 }
 
@@ -142,12 +146,14 @@ export async function GET(req: Request): Promise<Response> {
     return await handleMcpRequest(req);
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Internal server error";
+      error instanceof Error ? error.message : "";
 
     if (message === "Unauthorized") {
       return new Response("Unauthorized", { status: 401 });
     }
-    return new Response(message, { status: 500 });
+
+    console.error("[MCP] Error:", error);
+    return new Response("Internal server error", { status: 500 });
   }
 }
 

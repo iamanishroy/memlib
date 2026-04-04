@@ -221,12 +221,15 @@ export default function McpPage() {
 
   const selectedPreset = CLIENT_PRESETS.find((p) => p.id === client)!;
 
-  // Copy config
-  const handleCopy = () => {
-    navigator.clipboard.writeText(configJson);
-    setCopied(true);
-    toast.success("Copied to clipboard");
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(configJson);
+      setCopied(true);
+      toast.success("Copied to clipboard");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy to clipboard");
+    }
   };
 
   // Test connection
@@ -318,9 +321,13 @@ export default function McpPage() {
           variant="outline"
           size="sm"
           className="gap-1.5"
-          onClick={() => {
-            navigator.clipboard.writeText(`${baseUrl}/api/mcp`);
-            toast.success("Endpoint copied");
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(`${baseUrl}/api/mcp`);
+              toast.success("Endpoint copied");
+            } catch {
+              toast.error("Failed to copy");
+            }
           }}
         >
           <Copy className="size-3.5" />

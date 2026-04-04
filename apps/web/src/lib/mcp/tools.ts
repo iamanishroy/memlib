@@ -4,11 +4,9 @@ import type { MemoryService } from "@memlib/memory";
 
 // ─── Types ────────────────────────────────────────────────────────
 
-export type Scope = {
-  namespace: string | null;
-  entity: string | null;
-  locked: boolean;
-};
+export type Scope =
+  | { locked: true; namespace: string; entity: string }
+  | { locked: false; namespace: null; entity: null };
 
 export type ToolFilter = {
   include?: string[];
@@ -48,18 +46,18 @@ function withScope(
 
 /** Resolve namespace/entity from scope or params. */
 function resolveNs(scope: Scope, params: Record<string, unknown>): string {
-  return scope.locked ? scope.namespace! : (params.namespace as string);
+  return scope.locked ? scope.namespace : (params.namespace as string);
 }
 
 function resolveEntity(scope: Scope, params: Record<string, unknown>): string {
-  return scope.locked ? scope.entity! : (params.entity as string);
+  return scope.locked ? scope.entity : (params.entity as string);
 }
 
 function resolveEntityOptional(
   scope: Scope,
   params: Record<string, unknown>,
 ): string | undefined {
-  return scope.locked ? scope.entity! : (params.entity as string | undefined);
+  return scope.locked ? scope.entity : (params.entity as string | undefined);
 }
 
 function scopeSuffix(scope: Scope): string {
