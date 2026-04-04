@@ -30,12 +30,14 @@ import {
   Brain,
   BrainCircuit,
   Code,
+  Info,
   Loader2,
   Save,
+  Scale,
   Settings,
+  Shield,
   Sparkles,
   Trash2,
-  Zap,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────
@@ -64,23 +66,109 @@ interface ProjectConfig {
 const sections = [
   { id: "general", label: "General", icon: Settings },
   { id: "providers", label: "LLM Providers", icon: BrainCircuit },
+  { id: "scoring", label: "Scoring", icon: Scale },
   { id: "prompts", label: "Prompts", icon: Code },
-  { id: "consolidation", label: "Consolidation", icon: Zap },
   { id: "danger", label: "Danger Zone", icon: AlertTriangle },
 ] as const;
 
 type SectionId = (typeof sections)[number]["id"];
 
-// ─── Prompt previews (hardcoded in the memory package) ─────────
+// ─── Engine reference data (mirrors actual codebase values) ─────
 
-const PROMPTS = {
-  consolidation: `You are a memory consolidation system for an AI assistant.
-
-Given the following list of older memories, create a single concise summary that captures all the important information. Preserve key facts, preferences, and details.`,
-  scoring: `Hybrid scoring formula:
-  score = 0.6 × similarity + 0.2 × recency + 0.2 × importance`,
-  dedup: `Deduplication threshold: 0.95 cosine similarity
-If a new memory exceeds this threshold against an existing memory in the same namespace + entity, it is considered a duplicate and skipped.`,
+const ENGINE_REFERENCE = {
+  scoring: {
+    title: "Hybrid Retrieval Scoring",
+    description:
+      "When recalling memories, results are ranked using a weighted combination of three signals.",
+    icon: Scale,
+    weights: [
+      {
+        label: "Similarity",
+        value: 0.7,
+        color: "text-blue-500",
+        description:
+          "Cosine similarity between query embedding and memory embedding",
+      },
+      {
+        label: "Importance",
+        value: 0.2,
+        color: "text-amber-500",
+        description:
+          "LLM-scored relevance from 0.0 (trivial) to 1.0 (critical)",
+      },
+      {
+        label: "Recency",
+        value: 0.1,
+        color: "text-emerald-500",
+        description: "Decays linearly over 30 days",
+      },
+    ],
+    formula: "score = 0.7 × similarity + 0.2 × importance + 0.1 × recency",
+  },
+  dedup: {
+    title: "Deduplication & Conflict Detection",
+    description:
+      "The smart store pipeline uses two cosine-similarity thresholds to decide how to handle incoming facts.",
+    icon: Shield,
+    thresholds: [
+      {
+        label: "Exact duplicate",
+        value: "0.98",
+        action: "Skip — memory is considered identical and not stored",
+        color: "text-red-500",
+      },
+      {
+        label: "Conflict zone",
+        value: "0.65 – 0.98",
+        action: "LLM resolves — merge, replace, contradict, or keep existing",
+        color: "text-amber-500",
+      },
+      {
+        label: "New memory",
+        value: "< 0.65",
+        action: "Insert — stored as a new fact",
+        color: "text-emerald-500",
+      },
+    ],
+  },
+  importance: {
+    title: "Importance Scoring",
+    description:
+      "Each extracted fact is scored by the LLM for long-term importance.",
+    icon: Sparkles,
+    prompt: `You are a memory importance scorer for an AI assistant.\n\nRate the following memory on a scale from 0.0 to 1.0 based on how important it is to remember long-term.`,
+    scale: [
+      {
+        range: "0.0 – 0.2",
+        label: "Trivial",
+        example: "greetings, small talk",
+      },
+      { range: "0.2 – 0.4", label: "Low", example: "general observations" },
+      {
+        range: "0.4 – 0.6",
+        label: "Medium",
+        example: "useful facts, preferences",
+      },
+      {
+        range: "0.6 – 0.8",
+        label: "High",
+        example: "work details, strong preferences",
+      },
+      {
+        range: "0.8 – 1.0",
+        label: "Critical",
+        example: "core identity, key decisions",
+      },
+    ],
+  },
+  consolidation: {
+    title: "Consolidation Prompt",
+    description:
+      "When memories are consolidated, this system prompt instructs the LLM to produce a single summary.",
+    icon: BrainCircuit,
+    prompt: `You are a memory consolidation system for an AI assistant.\n\nGiven the following list of older memories, create a single concise summary that captures all the important information. Preserve key facts, preferences, and details. Do not lose any important specifics.`,
+    defaults: { ageDays: 7, batchSize: 50 },
+  },
 };
 
 // ─── Fetch helper ─────────────────────────────────────────────────
@@ -665,74 +753,226 @@ export default function ConfigurationsPage() {
                 </>
               )}
 
-              {/* ─── Prompts ───────────────────────────────────── */}
+              {/* ─── Scoring ──────────────────────────────────── */}
+              {activeSection === "scoring" && (
+                <>
+                  <SectionHeader
+                    title="Scoring"
+                    description="How the memory engine ranks and deduplicates your memories"
+                  />
+
+                  {/* Scoring weights */}
+                  <Card>
+                    <CardContent className="p-6 space-y-4">
+                      <div className="flex items-start gap-3">
+                        <Scale className="size-4 text-muted-foreground mt-0.5 shrink-0" />
+                        <div>
+                          <h3 className="text-sm font-semibold">
+                            {ENGINE_REFERENCE.scoring.title}
+                          </h3>
+                          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                            {ENGINE_REFERENCE.scoring.description}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="rounded-lg border bg-muted/30 p-3">
+                        <code className="text-xs font-mono font-medium">
+                          {ENGINE_REFERENCE.scoring.formula}
+                        </code>
+                      </div>
+                      <div className="space-y-2">
+                        {ENGINE_REFERENCE.scoring.weights.map((w) => (
+                          <div
+                            key={w.label}
+                            className="flex items-center gap-3"
+                          >
+                            <div className="flex items-center gap-2 w-28 shrink-0">
+                              <div
+                                className={cn(
+                                  "size-2 rounded-full",
+                                  w.color.replace("text-", "bg-"),
+                                )}
+                              />
+                              <span className="text-xs font-semibold">
+                                {w.label}
+                              </span>
+                            </div>
+                            <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                              <div
+                                className={cn(
+                                  "h-full rounded-full transition-all",
+                                  w.color.replace("text-", "bg-"),
+                                )}
+                                style={{
+                                  width: `${w.value * 100}%`,
+                                  opacity: 0.6,
+                                }}
+                              />
+                            </div>
+                            <span className="text-xs font-mono text-muted-foreground w-10 text-right">
+                              {(w.value * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="space-y-1.5 pt-1">
+                        {ENGINE_REFERENCE.scoring.weights.map((w) => (
+                          <p
+                            key={w.label}
+                            className="text-[11px] text-muted-foreground leading-relaxed"
+                          >
+                            <span className={cn("font-medium", w.color)}>
+                              {w.label}
+                            </span>
+                            {" — "}
+                            {w.description}
+                          </p>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Dedup thresholds */}
+                  <Card>
+                    <CardContent className="p-6 space-y-4">
+                      <div className="flex items-start gap-3">
+                        <Shield className="size-4 text-muted-foreground mt-0.5 shrink-0" />
+                        <div>
+                          <h3 className="text-sm font-semibold">
+                            {ENGINE_REFERENCE.dedup.title}
+                          </h3>
+                          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                            {ENGINE_REFERENCE.dedup.description}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        {ENGINE_REFERENCE.dedup.thresholds.map((t) => (
+                          <div
+                            key={t.label}
+                            className="flex items-start gap-3 rounded-lg border p-3 bg-muted/20"
+                          >
+                            <code
+                              className={cn(
+                                "text-xs font-mono font-semibold shrink-0 min-w-[90px]",
+                                t.color,
+                              )}
+                            >
+                              {t.value}
+                            </code>
+                            <div>
+                              <p className="text-xs font-medium">{t.label}</p>
+                              <p className="text-[11px] text-muted-foreground mt-0.5">
+                                {t.action}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <div className="flex items-start gap-2 rounded-lg border border-dashed p-3 bg-muted/20">
+                    <Info className="size-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Per-project scoring weights and deduplication thresholds
+                      will be customizable in a future update.
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {/* ─── Prompts ──────────────────────────────────── */}
               {activeSection === "prompts" && (
                 <>
                   <SectionHeader
                     title="Prompts"
-                    description="System prompts and scoring parameters used by the memory engine"
+                    description="System prompts used by the memory engine for extraction, scoring, and consolidation"
                   />
-                  {Object.entries(PROMPTS).map(([key, value]) => (
-                    <Card key={key}>
-                      <CardContent className="p-6">
-                        <h3 className="text-sm font-semibold capitalize mb-3">
-                          {key}
-                        </h3>
-                        <pre className="text-xs text-muted-foreground whitespace-pre-wrap bg-muted/50 rounded-md p-3 font-mono leading-relaxed">
-                          {value}
-                        </pre>
-                      </CardContent>
-                    </Card>
-                  ))}
-                  <p className="text-xs text-muted-foreground">
-                    These prompts are currently defined in the{" "}
-                    <code className="text-foreground">@memlib/memory</code>{" "}
-                    package. Per-project prompt customization is coming soon.
-                  </p>
-                </>
-              )}
 
-              {/* ─── Consolidation ─────────────────────────────── */}
-              {activeSection === "consolidation" && (
-                <>
-                  <SectionHeader
-                    title="Consolidation"
-                    description="How and when memories are summarized and archived"
-                  />
+                  {/* Importance scoring */}
                   <Card>
                     <CardContent className="p-6 space-y-4">
-                      <div className="space-y-1">
-                        <h3 className="text-sm font-semibold">How it works</h3>
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                          The consolidation process finds non-archived memories
-                          older than a threshold, groups them by (namespace,
-                          entity), generates an LLM summary for each group,
-                          stores the summary as a new memory, and archives the
-                          originals.
-                        </p>
-                      </div>
-                      <div className="h-px bg-border" />
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Age Threshold</Label>
-                          <Input value="7 days" disabled />
-                          <p className="text-xs text-muted-foreground">
-                            Memories older than this are candidates.
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Batch Size</Label>
-                          <Input value="50" disabled />
-                          <p className="text-xs text-muted-foreground">
-                            Max memories per consolidation run.
+                      <div className="flex items-start gap-3">
+                        <Sparkles className="size-4 text-muted-foreground mt-0.5 shrink-0" />
+                        <div>
+                          <h3 className="text-sm font-semibold">
+                            {ENGINE_REFERENCE.importance.title}
+                          </h3>
+                          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                            {ENGINE_REFERENCE.importance.description}
                           </p>
                         </div>
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        Per-project consolidation settings are coming soon.
-                      </p>
+                      <pre className="text-xs text-muted-foreground whitespace-pre-wrap bg-muted/50 rounded-md p-3 font-mono leading-relaxed">
+                        {ENGINE_REFERENCE.importance.prompt}
+                      </pre>
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {ENGINE_REFERENCE.importance.scale.map((s) => (
+                          <div
+                            key={s.label}
+                            className="text-center rounded-md border p-2 bg-muted/20"
+                          >
+                            <p className="text-[10px] font-mono text-muted-foreground">
+                              {s.range}
+                            </p>
+                            <p className="text-xs font-semibold mt-0.5">
+                              {s.label}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">
+                              {s.example}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
                     </CardContent>
                   </Card>
+
+                  {/* Consolidation prompt */}
+                  <Card>
+                    <CardContent className="p-6 space-y-4">
+                      <div className="flex items-start gap-3">
+                        <BrainCircuit className="size-4 text-muted-foreground mt-0.5 shrink-0" />
+                        <div>
+                          <h3 className="text-sm font-semibold">
+                            {ENGINE_REFERENCE.consolidation.title}
+                          </h3>
+                          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                            {ENGINE_REFERENCE.consolidation.description}
+                          </p>
+                        </div>
+                      </div>
+                      <pre className="text-xs text-muted-foreground whitespace-pre-wrap bg-muted/50 rounded-md p-3 font-mono leading-relaxed">
+                        {ENGINE_REFERENCE.consolidation.prompt}
+                      </pre>
+                      <div className="flex gap-4">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Info className="size-3" />
+                          Default age threshold:{" "}
+                          <span className="font-mono font-medium text-foreground">
+                            {ENGINE_REFERENCE.consolidation.defaults.ageDays}{" "}
+                            days
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Info className="size-3" />
+                          Default batch size:{" "}
+                          <span className="font-mono font-medium text-foreground">
+                            {ENGINE_REFERENCE.consolidation.defaults.batchSize}
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <div className="flex items-start gap-2 rounded-lg border border-dashed p-3 bg-muted/20">
+                    <Info className="size-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Per-project prompt customization will be available in a
+                      future update. These prompts currently apply to all
+                      projects.
+                    </p>
+                  </div>
                 </>
               )}
 
