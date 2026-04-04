@@ -5,7 +5,7 @@ import { Logo } from "@/components/logo";
 import { ProjectSwitcher } from "@/components/project-switcher";
 import { ModeToggle } from "@/components/mode-toggle";
 import UserMenu from "@/components/user-menu";
-import { Brain, Home, Key, Settings } from "lucide-react";
+import { Brain, Home, Key, Plug, Settings } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 
@@ -13,6 +13,7 @@ const tabs = [
   { id: "home", label: "Home", icon: Home, path: "" },
   { id: "memories", label: "Memories", icon: Brain, path: "/memories" },
   { id: "api-keys", label: "API Keys", icon: Key, path: "/api-keys" },
+  { id: "mcp", label: "MCP", icon: Plug, path: "/mcp" },
   {
     id: "configurations",
     label: "Configurations",
