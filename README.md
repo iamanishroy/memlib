@@ -1,33 +1,32 @@
 # memlib
 
-A memory API platform — store, recall, and manage AI memories with semantic search.
+A memory API for AI agents — store, recall, and manage memories with semantic search.
 
 ## Tech Stack
 
-- **Next.js** — Web dashboard
-- **Hono** — API server on Cloudflare Workers
-- **oRPC** — Type-safe APIs with OpenAPI + REST endpoints
-- **Drizzle ORM** — TypeScript-first database layer
-- **PostgreSQL** — Database (via Prisma Data Proxy)
-- **Better-Auth** — Authentication (Google, GitHub, email)
-- **Turborepo** — Monorepo build system
+- **Next.js** — Dashboard, API routes, docs
+- **oRPC** — Type-safe API (REST + RPC)
+- **Drizzle ORM** — Database layer
+- **PostgreSQL** — Database (Neon)
+- **Better-Auth** — Authentication
+- **MCP SDK** — Model Context Protocol server
+- **Turborepo** — Monorepo
 
 ## Project Structure
 
 ```
 memlib/
 ├── apps/
-│   ├── web/           # Next.js dashboard
-│   └── server/        # Cloudflare Worker API
+│   └── web/             # Next.js app (dashboard, API, docs)
 ├── packages/
-│   ├── api/           # oRPC routes & middleware
-│   ├── auth/          # Auth config (better-auth)
-│   ├── db/            # Drizzle schema & connection
-│   ├── memory/        # Memory service (store, recall, consolidate)
-│   ├── sdk/           # Published SDK (memlib)
-│   ├── env/           # Shared env config
-│   ├── ui/            # Shared UI components
-│   └── infra/         # Alchemy infra-as-code
+│   ├── ai/              # AI provider abstraction (embedding + LLM)
+│   ├── api/             # oRPC routers & auth middleware
+│   ├── bench/           # Benchmarking CLI
+│   ├── config/          # Shared TypeScript config
+│   ├── db/              # Drizzle schema (auth, projects, API keys)
+│   ├── e2e/             # End-to-end tests
+│   ├── memory/          # Core memory service
+│   └── sdk/             # Published SDK (memlib on npm)
 ```
 
 ## Getting Started
@@ -36,115 +35,45 @@ memlib/
 npm install
 ```
 
-### Environment Variables
-
-Copy `apps/server/.env.example` → `apps/server/.env` and fill in:
+Create `apps/web/.env`:
 
 ```env
+BETTER_AUTH_SECRET=...
+BETTER_AUTH_URL=http://localhost:8001
 DATABASE_URL=postgres://...
-BETTER_AUTH_SECRET=your-secret
-BETTER_AUTH_URL=http://localhost:8002
-CORS_ORIGIN=http://localhost:8001
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 GITHUB_CLIENT_ID=...
 GITHUB_CLIENT_SECRET=...
 ```
 
-### Database Setup
-
 ```bash
 npm run db:push
-```
-
-### Run Dev
-
-```bash
 npm run dev
 ```
 
-- Web: [http://localhost:8001](http://localhost:8001)
-- API: [http://localhost:8002](http://localhost:8002)
+App runs at [http://localhost:8001](http://localhost:8001).
 
-## API Endpoints
+## API
 
-All API routes are under `/v1` and require an API key (`Authorization: Bearer sk_...`).
+REST routes at `/api/v1/*` — requires `Authorization: Bearer sk_...`.
 
-| Method   | Path                     | Permission   | Description          |
-| -------- | ------------------------ | ------------ | -------------------- |
-| `GET`    | `/v1/health`             | Read         | Health check         |
-| `GET`    | `/v1/memory`             | Read         | List memories        |
-| `POST`   | `/v1/memory`             | Read & Write | Store a memory       |
-| `POST`   | `/v1/memory/batch`       | Read & Write | Batch store          |
-| `POST`   | `/v1/memory/recall`      | Read         | Semantic search      |
-| `DELETE` | `/v1/memory/{memoryId}`  | Admin        | Delete a memory      |
-| `POST`   | `/v1/memory/migrate`     | Admin        | Run migrations       |
-| `POST`   | `/v1/memory/consolidate` | Admin        | Consolidate memories |
-
-### Quick Example
-
-```bash
-curl -X POST https://your-worker.workers.dev/v1/memory \
-  -H "Authorization: Bearer sk_YOUR_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"namespace": "user:alice", "content": "Loves TypeScript"}'
-```
+| Method   | Path                         | Description                    |
+| -------- | ---------------------------- | ------------------------------ |
+| `POST`   | `/api/v1/memory`             | Store a memory                 |
+| `POST`   | `/api/v1/memory/batch`       | Batch store                    |
+| `POST`   | `/api/v1/memory/recall`      | Semantic search                |
+| `POST`   | `/api/v1/memory/prepare`     | Context-aware memory synthesis |
+| `POST`   | `/api/v1/memory/diff`        | Changelog since timestamp      |
+| `GET`    | `/api/v1/memory`             | List memories                  |
+| `GET`    | `/api/v1/memory/events`      | Audit trail                    |
+| `DELETE` | `/api/v1/memory/{memoryId}`  | Delete a memory                |
+| `POST`   | `/api/v1/memory/consolidate` | Consolidate memories           |
+| `POST`   | `/api/v1/memory/migrate`     | Run migrations                 |
+| `POST`   | `/api/mcp`                   | MCP server (Streamable HTTP)   |
 
 ## SDK
-
-Install the published SDK:
 
 ```bash
 npm install memlib
 ```
-
-## Deployment
-
-### Prerequisites
-
-1. [Cloudflare account](https://dash.cloudflare.com)
-2. **Cloudflare API Token** — create at [API Tokens](https://dash.cloudflare.com/profile/api-tokens) using the "Edit Cloudflare Workers" template
-
-### Manual Deploy
-
-```bash
-# 1. Login to Cloudflare (first time only)
-npx wrangler login
-
-# 2. Configure Alchemy (first time only)
-cd packages/infra && npx alchemy configure
-
-# 3. Deploy
-cd packages/infra && npm run deploy
-```
-
-### CI/CD (GitHub Actions)
-
-Pushes to `main` auto-deploy via `.github/workflows/deploy.yml`.
-
-**Setup:** Add `CLOUDFLARE_API_TOKEN` as a [GitHub repository secret](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions).
-
-1. Go to your repo → Settings → Secrets → Actions
-2. Add `CLOUDFLARE_API_TOKEN` with your Cloudflare API token
-
-Every push to `main` will:
-
-- Install dependencies
-- Run type checks
-- Deploy the Worker via `wrangler deploy`
-
-### Teardown
-
-```bash
-cd packages/infra && npm run destroy
-```
-
-## Available Scripts
-
-| Script                | Description                          |
-| --------------------- | ------------------------------------ |
-| `npm run dev`         | Start all apps in dev mode           |
-| `npm run build`       | Build all apps                       |
-| `npm run check-types` | TypeScript check across all packages |
-| `npm run db:push`     | Push schema changes to database      |
-| `npm run db:studio`   | Open Drizzle Studio                  |
