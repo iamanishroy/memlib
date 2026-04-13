@@ -1,0 +1,92 @@
+---
+title: Categories
+description: How MemLib automatically categorizes extracted facts
+---
+
+## Auto-Categorization
+
+When you use [smart store](/docs/concepts/smart-store), the LLM automatically assigns a **category** to each extracted fact. Categories help organize memories and enable filtered recall.
+
+---
+
+## Category List
+
+MemLib uses 9 built-in categories:
+
+| Category | Description | Examples |
+|----------|-------------|----------|
+| `preference` | Likes, dislikes, choices, settings | "Prefers dark mode", "Likes TypeScript over JavaScript" |
+| `personal` | Personal biographical information | "Lives in Berlin", "Has a dog named Max" |
+| `professional` | Work, career, skills, team info | "Works as a software engineer", "Team uses React" |
+| `plan` | Intentions, goals, scheduled events | "Planning to learn Rust", "Meeting at 2pm Thursday" |
+| `health` | Medical, dietary, physical information | "Allergic to peanuts", "Runs 5km daily" |
+| `relationship` | People, connections, social context | "Best friend is named Sarah", "Reports to Maria" |
+| `opinion` | Views, beliefs, assessments | "Thinks AI will transform education", "Prefers remote work" |
+| `fact` | Objective factual information | "Company was founded in 2020", "Python 3.12 is latest" |
+| `other` | Anything that doesn't fit above | Miscellaneous information |
+
+---
+
+## Using Categories
+
+### Filter Recall by Category
+
+Narrow your search to a specific type of information:
+
+```ts
+// Only recall preferences
+const prefs = await mem.recall({
+  query: "development setup",
+  category: "preference",
+});
+
+// Only recall health-related memories
+const health = await mem.recall({
+  query: "dietary restrictions",
+  category: "health",
+});
+```
+
+### Filter Prepare by Category
+
+When synthesizing context, focus on specific memory types:
+
+```ts
+const ctx = await mem.prepare({
+  messages: [{ role: "user", content: "Let's plan dinner" }],
+  category: "health",  // priority on allergies and dietary info
+});
+```
+
+### Categories in Results
+
+Every recalled or stored memory includes its assigned category:
+
+```ts
+const result = await mem.store({
+  content: "I'm allergic to shellfish and prefer vegetarian food",
+});
+
+// result.memories = [
+//   { content: "Allergic to shellfish", category: "health", importance: 0.95 },
+//   { content: "Prefers vegetarian food", category: "preference", importance: 0.7 },
+// ]
+```
+
+---
+
+## Consolidation by Category
+
+When memories are [consolidated](/docs/api/consolidate), they are grouped by `(namespace, entity, category)`. This prevents unrelated facts from being merged:
+
+- Health memories consolidate together → "Has several dietary restrictions: allergic to peanuts, prefers vegetarian..."
+- Professional memories consolidate separately → "Software engineer who uses TypeScript, React, and Next.js..."
+
+---
+
+## Notes
+
+- Categories are **automatically assigned** by the LLM during fact extraction — you don't need to specify them.
+- You cannot override the category during store — it's always inferred from the content.
+- Categories are stored as plain text strings, so future versions may extend the list.
+- The `other` category is a catch-all for information that doesn't fit the predefined types.

@@ -1,0 +1,95 @@
+---
+title: Prepare Context
+description: "POST /memory/prepare — Context-aware memory synthesis"
+---
+
+## Endpoint
+
+```
+POST /v1/memory/prepare
+```
+
+**Permission:** Read
+
+---
+
+## Request Body
+
+```json
+{
+  "namespace": "my-app",
+  "entity": "user-123",
+  "messages": [
+    { "role": "user", "content": "Help me set up my workspace" }
+  ],
+  "maxCandidates": 20,
+  "maxTokens": 500,
+  "category": "preference"
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `namespace` | `string` | ✅ | — | Memory namespace |
+| `entity` | `string` | ✅ | — | Entity identifier |
+| `messages` | `Message[]` | ✅ | — | Conversation messages for context analysis |
+| `maxCandidates` | `number` | — | `20` | Max memories to consider |
+| `maxTokens` | `number` | — | — | Guide the output token budget |
+| `category` | `string` | — | — | Filter candidates by category |
+
+### Message Format
+
+```json
+{
+  "role": "user" | "assistant" | "system",
+  "content": "string"
+}
+```
+
+---
+
+## Response
+
+```json
+{
+  "context": "The user prefers dark mode and uses TypeScript for all projects. They work as a software engineer and their team uses React with Next.js.",
+  "memoriesUsed": [
+    "550e8400-e29b-41d4-a716-446655440000",
+    "550e8400-e29b-41d4-a716-446655440001"
+  ],
+  "candidatesConsidered": 15,
+  "tokenCount": 127
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `context` | `string` | Synthesized briefing paragraph — ready to inject into a system prompt |
+| `memoriesUsed` | `string[]` | IDs of memories used in the synthesis |
+| `candidatesConsidered` | `number` | Total candidate memories evaluated |
+| `tokenCount` | `number` | Estimated token count of the context paragraph |
+
+If no relevant memories are found, `context` will be empty.
+
+---
+
+## curl Example
+
+```bash
+curl -X POST https://mem.anishroy.com/api/v1/memory/prepare \
+  -H "Authorization: Bearer sk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "namespace": "my-app",
+    "entity": "user-123",
+    "messages": [
+      { "role": "user", "content": "Help me plan dinner tonight" }
+    ]
+  }'
+```
+
+---
+
+## LLM Cost
+
+**2 LLM calls per request** — one for intent analysis, one for context synthesis. See [prepare() SDK reference](/docs/sdk/prepare) for pipeline details.

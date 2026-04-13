@@ -1,0 +1,119 @@
+---
+title: Error Handling
+description: Handle API errors with the MemLibError class
+---
+
+## MemLibError
+
+All API errors throw a `MemLibError` with the HTTP status code and response body:
+
+```ts
+import { MemLib, MemLibError } from "memlib";
+
+const mem = new MemLib({ apiKey: "sk_..." });
+
+try {
+  await mem.recall({ query: "test" });
+} catch (error) {
+  if (error instanceof MemLibError) {
+    console.error(error.message);  // "MemLib API error: 401 Unauthorized"
+    console.error(error.status);   // 401
+    console.error(error.body);     // { error: "Invalid API key" }
+  }
+}
+```
+
+### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `message` | `string` | Human-readable error message |
+| `status` | `number` | HTTP status code |
+| `body` | `unknown` | Raw API error response body |
+
+---
+
+## Common Error Codes
+
+| Status | Meaning | Likely Cause |
+|--------|---------|-------------|
+| `400` | Bad Request | Invalid request body — check required fields |
+| `401` | Unauthorized | Invalid or missing API key |
+| `403` | Forbidden | API key doesn't have the required permission level |
+| `404` | Not Found | Memory ID doesn't exist (for delete) |
+| `500` | Internal Server Error | Server-side error — retry or check your database connection |
+
+---
+
+## Permission Errors
+
+MemLib uses three permission levels for API keys:
+
+| Level | Name | Operations |
+|-------|------|------------|
+| 1 | Read | `list`, `recall`, `prepare`, `diff`, `health`, `events` |
+| 2 | Read & Write | All Read operations + `store`, `batchStore` |
+| 3 | Admin | All operations + `delete`, `consolidate`, `migrate` |
+
+If your API key doesn't have the required permission, you'll get a `403` error:
+
+```ts
+// API key with Read permission trying to store
+try {
+  await mem.store({ content: "test" });
+} catch (error) {
+  if (error instanceof MemLibError && error.status === 403) {
+    console.error("API key needs Read & Write permission for store()");
+  }
+}
+```
+
+---
+
+## Validation Errors
+
+The SDK throws plain `Error` objects (not `MemLibError`) for client-side validation failures:
+
+```ts
+// Missing namespace
+const mem = new MemLib({ apiKey: "sk_..." });
+// No namespace in constructor or call options
+
+try {
+  await mem.store({ content: "test" });
+} catch (error) {
+  // Error: "MemLib: namespace is required. Pass it in the constructor or per-call options."
+}
+```
+
+These errors are thrown before any API call is made.
+
+---
+
+## Retry Strategy
+
+For production applications, consider retrying on transient errors:
+
+```ts
+async function withRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (error instanceof MemLibError && error.status >= 500 && i < retries - 1) {
+        await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw new Error("Unreachable");
+}
+
+// Usage
+const result = await withRetry(() =>
+  mem.store({ content: "Important fact" })
+);
+```
+
+Only retry on `5xx` errors. Client errors (`4xx`) indicate a problem with your request and should not be retried.

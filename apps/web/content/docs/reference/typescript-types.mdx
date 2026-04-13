@@ -1,0 +1,281 @@
+---
+title: TypeScript Types
+description: All exported types from the MemLib SDK
+---
+
+## Configuration
+
+### MemLibConfig
+
+```ts
+interface MemLibConfig {
+  /** API key for authentication (e.g. "sk_...") */
+  apiKey: string;
+  /** Base URL of the MemLib API. Defaults to "https://mem.anishroy.com/api" */
+  baseUrl?: string;
+  /** Default namespace for all operations. Can be overridden per call. */
+  namespace?: string;
+  /** Default entity for all operations. Can be overridden per call. */
+  entity?: string;
+}
+```
+
+---
+
+## Request Options
+
+### StoreOptions
+
+```ts
+interface StoreOptions {
+  content: string;
+  namespace?: string;
+  entity?: string;
+  infer?: boolean;        // default: true
+  tags?: string[];
+  metadata?: Record<string, unknown>;
+  source?: string;
+  ttl?: number;
+}
+```
+
+### RecallOptions
+
+```ts
+interface RecallOptions {
+  query: string;
+  namespace?: string;
+  entity?: string;
+  category?: string;
+  limit?: number;
+  tags?: string[];
+  minImportance?: number;
+}
+```
+
+### PrepareOptions
+
+```ts
+interface PrepareOptions {
+  messages: Message[];
+  namespace?: string;
+  entity?: string;
+  maxCandidates?: number;
+  maxTokens?: number;
+  category?: string;
+}
+```
+
+### DiffOptions
+
+```ts
+interface DiffOptions {
+  since: string;
+  namespace?: string;
+  entity?: string;
+  limit?: number;
+}
+```
+
+### BatchStoreOptions
+
+```ts
+interface BatchStoreOptions {
+  namespace?: string;
+  entity?: string;
+  memories: Array<{
+    content: string;
+    tags?: string[];
+    metadata?: Record<string, unknown>;
+    ttl?: number;
+  }>;
+}
+```
+
+### ListOptions
+
+```ts
+interface ListOptions {
+  namespace?: string;
+  entity?: string;
+  limit?: number;
+}
+```
+
+---
+
+## Response Types
+
+### Memory
+
+```ts
+interface Memory {
+  id: string;
+  namespace: string;
+  entity: string;
+  content: string;
+  category: string | null;
+  tags: string[] | null;
+  metadata: Record<string, unknown> | null;
+  importance: number | null;
+  source: string | null;
+  createdAt: string;
+  lastAccessed: string | null;
+  expiresAt: string | null;
+  deduplicated?: boolean;
+}
+```
+
+### RetrievedMemory
+
+```ts
+interface RetrievedMemory {
+  id: string;
+  content: string;
+  category: string | null;
+  tags: string[] | null;
+  metadata: Record<string, unknown> | null;
+  importance: number;
+  /** Cosine similarity to the query (0.0–1.0) */
+  similarity: number;
+  /** Recency score (0.0–1.0) */
+  recency: number;
+  /** Hybrid score: 0.6×sim + 0.2×recency + 0.2×importance */
+  score: number;
+}
+```
+
+### StoreResult
+
+```ts
+interface StoreResult {
+  memories: (Memory & { event: string })[];
+  skipped: number;
+  conflicts: number;
+}
+```
+
+### PrepareResult
+
+```ts
+interface PrepareResult {
+  context: string;
+  memoriesUsed: string[];
+  candidatesConsidered: number;
+  tokenCount: number;
+}
+```
+
+### DiffResult
+
+```ts
+interface DiffResult {
+  created: {
+    id: string;
+    content: string;
+    category: string | null;
+    createdAt: string;
+  }[];
+  updated: {
+    id: string;
+    content: string;
+    previousContent: string;
+    category: string | null;
+    updatedAt: string;
+  }[];
+  deleted: {
+    id: string;
+    content: string;
+    deletedAt: string;
+  }[];
+  replaced: {
+    oldId: string;
+    oldContent: string;
+    newId: string;
+    newContent: string;
+    category: string | null;
+    reason: string;
+    replacedAt: string;
+  }[];
+  since: string;
+  changeCount: number;
+  summary: string;
+}
+```
+
+### BatchStoreResult
+
+```ts
+interface BatchStoreResult {
+  count: number;
+  memories: Memory[];
+}
+```
+
+### DeleteResult
+
+```ts
+interface DeleteResult {
+  deleted: boolean;
+}
+```
+
+### HealthResult
+
+```ts
+interface HealthResult {
+  status: string;
+  [key: string]: unknown;
+}
+```
+
+---
+
+## Shared Types
+
+### Message
+
+```ts
+interface Message {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+```
+
+### MemLibError
+
+```ts
+class MemLibError extends Error {
+  status: number;
+  body: unknown;
+
+  constructor(message: string, status: number, body: unknown);
+}
+```
+
+---
+
+## Import
+
+All types can be imported from the main package:
+
+```ts
+import type {
+  MemLibConfig,
+  StoreOptions,
+  RecallOptions,
+  PrepareOptions,
+  DiffOptions,
+  BatchStoreOptions,
+  ListOptions,
+  Memory,
+  RetrievedMemory,
+  StoreResult,
+  PrepareResult,
+  DiffResult,
+  BatchStoreResult,
+  DeleteResult,
+  HealthResult,
+  Message,
+} from "memlib";
+```

@@ -1,0 +1,79 @@
+---
+title: Consolidate
+description: "POST /memory/consolidate — Summarize old memories into concise entries"
+---
+
+## Endpoint
+
+```
+POST /v1/memory/consolidate
+```
+
+**Permission:** Admin
+
+---
+
+## What It Does
+
+Consolidation summarizes old memories into concise, combined entries. It groups memories by `(namespace, entity, category)` and uses the LLM to generate summaries.
+
+For example, 10 separate professional memories might consolidate into: "Software engineer who uses TypeScript, React, and Next.js. Team does sprint planning on Mondays."
+
+---
+
+## Request Body
+
+```json
+{
+  "ageDays": 7,
+  "limit": 50
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `ageDays` | `number` | — | `7` | Only consolidate memories older than this many days |
+| `limit` | `number` | — | `50` | Max memories to process per run |
+
+---
+
+## Response
+
+```json
+{
+  "message": "Consolidation complete",
+  "consolidated": 2,
+  "results": [
+    {
+      "namespace": "my-app",
+      "entity": "user-123",
+      "category": "preference",
+      "memoriesConsolidated": 5,
+      "summary": "Prefers dark mode, TypeScript, and Cursor. Values AI-powered development tools."
+    }
+  ]
+}
+```
+
+---
+
+## curl Example
+
+```bash
+curl -X POST https://mem.anishroy.com/api/v1/memory/consolidate \
+  -H "Authorization: Bearer sk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{ "ageDays": 7, "limit": 50 }'
+```
+
+---
+
+## How It Works
+
+1. Query non-archived memories older than `ageDays`
+2. Group by `(namespace, entity, category)`
+3. Skip groups with fewer than 2 memories
+4. Summarize each group via LLM
+5. Insert consolidated memory, archive originals
+
+> **Tip:** Run consolidation periodically (e.g., weekly cron) to keep your memory store lean.

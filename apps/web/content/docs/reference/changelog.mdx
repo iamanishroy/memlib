@@ -1,0 +1,29 @@
+---
+title: Changelog
+description: Version history and release notes
+---
+
+## Latest
+
+### v1.0.0
+
+Initial public release.
+
+#### Features
+- **Smart Store** — LLM-powered fact extraction with automatic deduplication and conflict resolution
+- **Semantic Recall** — Hybrid scoring (similarity × 0.6 + recency × 0.2 + importance × 0.2)
+- **Context Synthesis** (`prepare`) — Conversation-aware memory synthesis with 2 LLM calls
+- **Memory Diff** — Zero-LLM-cost changelog queries on the audit trail
+- **Batch Store** — Bulk memory import without LLM inference
+- **Consolidation** — Category-aware summarization of old memories
+- **MCP Server** — Model Context Protocol support for Claude Desktop, Cursor, and other clients
+
+#### Supported Providers
+- **LLM:** Gemini, OpenAI, Anthropic, Mistral, Groq, xAI, Cohere, OpenRouter
+- **Embedding:** Gemini, OpenAI, Cohere, Mistral, Voyage
+
+#### SDK
+- Published as `memlib` on npm
+- Full TypeScript types
+- Constructor defaults with per-call overrides
+- `MemLibError` class for structured error handling

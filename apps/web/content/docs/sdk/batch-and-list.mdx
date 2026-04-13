@@ -1,0 +1,133 @@
+---
+title: Batch, List & Utilities
+description: batchStore(), list(), delete(), and health() methods
+---
+
+## batchStore()
+
+Store multiple memories at once. Uses raw store (no LLM inference) for all items.
+
+```ts
+const result = await mem.batchStore({
+  memories: [
+    { content: "Likes coffee" },
+    { content: "Works remotely", tags: ["work"] },
+    { content: "Located in Berlin", metadata: { source: "profile" } },
+  ],
+});
+
+console.log(result.count);    // 3
+console.log(result.memories); // [...Memory[]]
+```
+
+### Options
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `namespace` | `string` | — | Override default namespace |
+| `entity` | `string` | — | Override default entity |
+| `memories` | `Array` | ✅ | Array of memories to store |
+
+Each memory in the array accepts:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `content` | `string` | ✅ | Text content |
+| `tags` | `string[]` | — | Tags for categorization |
+| `metadata` | `Record<string, unknown>` | — | Arbitrary metadata |
+| `ttl` | `number` | — | Time-to-live in seconds |
+
+### Return Type
+
+```ts
+interface BatchStoreResult {
+  count: number;
+  memories: Memory[];
+}
+```
+
+> **Note:** Batch store doesn't use smart store — no fact extraction, no conflict resolution. Use it for pre-processed data imports.
+
+---
+
+## list()
+
+List stored memories in a namespace.
+
+```ts
+// List all memories for the default entity
+const all = await mem.list();
+
+// List with filters
+const filtered = await mem.list({
+  entity: "user-456",
+  limit: 20,
+});
+```
+
+### Options
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `namespace` | `string` | — | Override default namespace |
+| `entity` | `string` | — | Override default entity |
+| `limit` | `number` | — | Maximum memories to return |
+
+### Return Type
+
+Returns `Memory[]`:
+
+```ts
+interface Memory {
+  id: string;
+  namespace: string;
+  entity: string;
+  content: string;
+  category: string | null;
+  tags: string[] | null;
+  metadata: Record<string, unknown> | null;
+  importance: number | null;
+  source: string | null;
+  createdAt: string;
+  lastAccessed: string | null;
+  expiresAt: string | null;
+}
+```
+
+---
+
+## delete()
+
+Delete a memory by its UUID. Requires an API key with **Admin** permission.
+
+```ts
+await mem.delete("550e8400-e29b-41d4-a716-446655440000");
+```
+
+### Return Type
+
+```ts
+interface DeleteResult {
+  deleted: boolean;
+}
+```
+
+---
+
+## health()
+
+Check API connectivity and verify your API key is valid.
+
+```ts
+const { status } = await mem.health();
+console.log(status); // "ok"
+```
+
+### Return Type
+
+```ts
+interface HealthResult {
+  status: string;
+  [key: string]: unknown;
+}
+```

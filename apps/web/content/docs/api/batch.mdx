@@ -1,0 +1,82 @@
+---
+title: Batch Store
+description: "POST /memory/batch — Store multiple memories at once"
+---
+
+## Endpoint
+
+```
+POST /v1/memory/batch
+```
+
+**Permission:** Read & Write
+
+---
+
+## Request Body
+
+```json
+{
+  "namespace": "my-app",
+  "entity": "user-123",
+  "memories": [
+    { "content": "Likes coffee" },
+    { "content": "Works remotely", "tags": ["work"] },
+    { "content": "Located in Berlin", "metadata": { "source": "profile" } }
+  ]
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `namespace` | `string` | ✅ | Memory namespace |
+| `entity` | `string` | ✅ | Entity identifier |
+| `memories` | `Array` | ✅ | Array of memories to store |
+
+Each memory accepts:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `content` | `string` | ✅ | Text content |
+| `tags` | `string[]` | — | Tags for categorization |
+| `metadata` | `object` | — | Arbitrary metadata |
+| `ttl` | `number` | — | Time-to-live in seconds |
+
+---
+
+## Response
+
+```json
+{
+  "count": 3,
+  "memories": [
+    {
+      "id": "uuid-1",
+      "content": "Likes coffee",
+      "namespace": "my-app",
+      "entity": "user-123",
+      "createdAt": "2024-03-20T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+## curl Example
+
+```bash
+curl -X POST https://mem.anishroy.com/api/v1/memory/batch \
+  -H "Authorization: Bearer sk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "namespace": "my-app",
+    "entity": "user-123",
+    "memories": [
+      { "content": "Likes coffee" },
+      { "content": "Works remotely" }
+    ]
+  }'
+```
+
+> **Note:** Batch store uses raw storage (no LLM inference). For smart store with fact extraction, use the [store endpoint](/docs/api/store) with individual calls.

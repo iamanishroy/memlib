@@ -1,0 +1,210 @@
+---
+title: Session-Aware Agents
+description: Use diff() to brief your agent on changes between sessions
+---
+
+## The Problem
+
+Your agent talks to a user, learns their preferences, then the session ends. Next time the user returns, the agent has no idea what changed since the last session — did the user update their preferences? Did they mention new goals?
+
+`prepare()` gives you relevant context, but it doesn't tell you **what changed**. That's what `diff()` is for.
+
+---
+
+## The Pattern
+
+Track the last session timestamp, and at the start of each new session, call `diff()` to get a changelog:
+
+```ts
+import { MemLib } from "memlib";
+
+const mem = new MemLib({
+  apiKey: process.env.MEMLIB_API_KEY!,
+  namespace: "my-app",
+});
+
+async function startSession(userId: string, lastSessionEnd: string) {
+  const entity = `user-${userId}`;
+
+  // 1. What changed since the last session?
+  const diff = await mem.diff({
+    since: lastSessionEnd,
+    entity,
+  });
+
+  // 2. Get current context
+  const { context } = await mem.prepare({
+    messages: [{ role: "system", content: "New session starting" }],
+    entity,
+  });
+
+  // 3. Build a session-aware system prompt
+  let systemPrompt = "You are a helpful assistant with memory.\n\n";
+
+  if (context) {
+    systemPrompt += `About this user:\n${context}\n\n`;
+  }
+
+  if (diff.changeCount > 0) {
+    systemPrompt += `Changes since last session (${diff.summary}):\n`;
+    systemPrompt += formatDiff(diff);
+  }
+
+  return systemPrompt;
+}
+```
+
+---
+
+## Formatting the Diff
+
+The diff result has four arrays — format them into something your LLM can understand:
+
+```ts
+import type { DiffResult } from "memlib";
+
+function formatDiff(diff: DiffResult): string {
+  const lines: string[] = [];
+
+  for (const r of diff.replaced) {
+    lines.push(`• Changed: "${r.oldContent}" → "${r.newContent}"`);
+  }
+
+  for (const c of diff.created) {
+    lines.push(`• New: ${c.content}`);
+  }
+
+  for (const u of diff.updated) {
+    lines.push(`• Updated: "${u.previousContent}" → "${u.content}"`);
+  }
+
+  for (const d of diff.deleted) {
+    lines.push(`• Removed: ${d.content}`);
+  }
+
+  return lines.join("\n");
+}
+```
+
+### Example Output
+
+```
+Changes since last session (1 new, 1 replaced):
+• Changed: "Uses VS Code" → "Uses Cursor (switched from VS Code)"
+• New: Team does sprint planning on Thursdays
+```
+
+---
+
+## Tracking Session Timestamps
+
+You need to store when each session ended. A simple approach:
+
+```ts
+// At the end of each session, save the timestamp
+async function endSession(userId: string) {
+  const timestamp = new Date().toISOString();
+
+  // Store in your app's database, Redis, or even in MemLib itself
+  await saveLastSessionTime(userId, timestamp);
+}
+
+// At the start of the next session, retrieve it
+async function getLastSessionTime(userId: string): Promise<string> {
+  const timestamp = await loadLastSessionTime(userId);
+
+  // Fallback: 24 hours ago if no previous session
+  return timestamp ?? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+}
+```
+
+---
+
+## What Diff Reports
+
+| Array | What It Contains | Example |
+|-------|-----------------|---------|
+| `created` | New memories added since the timestamp | User mentioned a new hobby |
+| `updated` | Memories that were refined or merged | "Uses TypeScript" → "Uses TypeScript, especially for backend" |
+| `replaced` | Contradiction pairs — old fact superseded by new | "Lives in NYC" → "Moved to Berlin" |
+| `deleted` | Memories that were removed | Expired or manually deleted |
+
+The `replaced` array is the most interesting for session awareness — it tells your agent exactly what preferences changed.
+
+---
+
+## Full Example: Chat with Session Awareness
+
+```ts
+import { MemLib } from "memlib";
+import type { DiffResult } from "memlib";
+
+const mem = new MemLib({
+  apiKey: process.env.MEMLIB_API_KEY!,
+  namespace: "chatbot",
+});
+
+function formatDiff(diff: DiffResult): string {
+  const lines: string[] = [];
+  for (const r of diff.replaced) {
+    lines.push(`• Changed: "${r.oldContent}" → "${r.newContent}"`);
+  }
+  for (const c of diff.created) {
+    lines.push(`• New: ${c.content}`);
+  }
+  for (const u of diff.updated) {
+    lines.push(`• Updated: "${u.previousContent}" → "${u.content}"`);
+  }
+  return lines.join("\n");
+}
+
+async function chat(
+  userId: string,
+  userMessage: string,
+  conversationHistory: Array<{ role: "user" | "assistant"; content: string }>,
+  lastSessionEnd: string,
+) {
+  const entity = `user-${userId}`;
+
+  // Store the message
+  await mem.store({ content: userMessage, entity });
+
+  // Build context
+  const messages = [
+    ...conversationHistory,
+    { role: "user" as const, content: userMessage },
+  ];
+
+  const [{ context }, diff] = await Promise.all([
+    mem.prepare({
+      messages: messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      })),
+      entity,
+    }),
+    mem.diff({ since: lastSessionEnd, entity }),
+  ]);
+
+  // Build system prompt
+  let systemPrompt = "You are a helpful assistant with memory.\n\n";
+
+  if (context) {
+    systemPrompt += `About this user:\n${context}\n\n`;
+  }
+
+  if (diff.changeCount > 0) {
+    systemPrompt += `Recent changes:\n${formatDiff(diff)}\n\n`;
+    systemPrompt += "Acknowledge relevant changes naturally in conversation.";
+  }
+
+  // Pass to your LLM
+  return callYourLLM(systemPrompt, messages);
+}
+```
+
+---
+
+## Performance
+
+`diff()` makes **zero LLM calls** — it's a pure SQL query on the `memory_events` audit trail. Typical response time is under 20ms. Safe to call at the start of every session.

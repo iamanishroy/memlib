@@ -1,0 +1,128 @@
+---
+title: Hybrid Scoring
+description: How MemLib ranks memories using similarity, recency, and importance
+---
+
+## The Scoring Formula
+
+When you recall memories, MemLib doesn't just return the most similar results. It uses a **hybrid scoring formula** that balances three signals:
+
+```
+score = 0.6 × similarity + 0.2 × recency + 0.2 × importance
+```
+
+This ensures that recent, important memories are surfaced even if they're not the most semantically similar match.
+
+---
+
+## Score Components
+
+### Similarity (60% weight)
+
+**Cosine similarity** between the query embedding and the memory's stored embedding. This is the primary signal — memories must be semantically relevant to the query.
+
+| Score | Interpretation |
+|-------|---------------|
+| 0.90+ | Very strong match — almost the same meaning |
+| 0.75–0.90 | Good match — clearly related topic |
+| 0.60–0.75 | Moderate match — tangentially related |
+| < 0.60 | Weak match — likely not relevant |
+
+### Recency (20% weight)
+
+How recently the memory was created or last accessed. Normalized to a 0.0–1.0 scale where:
+
+- **1.0** = just created or accessed
+- **0.0** = oldest memory in the namespace
+
+This gives a natural "freshness" boost — if a user recently mentioned something, it's likely more relevant to the current conversation.
+
+### Importance (20% weight)
+
+The importance score assigned during fact extraction (0.0–1.0). The LLM evaluates how critical each fact is:
+
+| Score | Example |
+|-------|---------|
+| 0.9–1.0 | "Severely allergic to peanuts" — critical safety information |
+| 0.7–0.8 | "Works as a software engineer" — useful context |
+| 0.5–0.6 | "Prefers dark mode" — nice to have |
+| 0.2–0.4 | "Mentioned liking a specific movie" — low priority |
+
+---
+
+## Filtering
+
+You can narrow results before scoring with these filters:
+
+### Category Filter
+
+Only return memories of a specific category:
+
+```ts
+const memories = await mem.recall({
+  query: "work setup",
+  category: "preference",  // only preferences
+});
+```
+
+### Tag Filter
+
+Only return memories with matching tags:
+
+```ts
+const memories = await mem.recall({
+  query: "dietary needs",
+  tags: ["health", "food"],
+});
+```
+
+### Minimum Importance
+
+Set a floor on the importance score:
+
+```ts
+const memories = await mem.recall({
+  query: "allergies",
+  minImportance: 0.8,  // only high-importance memories
+});
+```
+
+### Result Limit
+
+Control the maximum number of results (default: 10):
+
+```ts
+const memories = await mem.recall({
+  query: "tech stack",
+  limit: 5,
+});
+```
+
+---
+
+## Understanding Results
+
+Each recalled memory includes the individual score components:
+
+```ts
+const memories = await mem.recall({ query: "What editor do they use?" });
+
+// memories[0] = {
+//   id: "...",
+//   content: "Uses Cursor as primary editor",
+//   category: "preference",
+//   similarity: 0.92,     // very strong semantic match
+//   recency: 0.85,        // recently stored
+//   importance: 0.70,     // moderately important
+//   score: 0.862,         // 0.6(0.92) + 0.2(0.85) + 0.2(0.70)
+// }
+```
+
+You can use these individual scores to make decisions in your application — for example, only using memories above a certain `similarity` threshold for critical operations.
+
+---
+
+## Next Steps
+
+- [Categories](/docs/concepts/categories) — the auto-categorization system
+- [SDK recall() reference](/docs/sdk/recall) — full API details

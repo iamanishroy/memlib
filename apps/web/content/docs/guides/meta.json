@@ -1,0 +1,12 @@
+{
+  "title": "Guides",
+  "pages": [
+    "mcp",
+    "chatbot-memory",
+    "rag",
+    "multi-agent",
+    "session-awareness",
+    "namespace-patterns",
+    "self-hosting"
+  ]
+}

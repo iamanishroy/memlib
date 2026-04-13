@@ -1,0 +1,167 @@
+---
+title: Multi-Agent Memory
+description: Share and isolate memory across multiple AI agents
+---
+
+## The Pattern
+
+When multiple agents collaborate, they need to both **share context** and **maintain private state**. MemLib's namespace/entity model maps directly to this:
+
+- **Namespace** = the project or workspace they share
+- **Entity** = each agent's identity
+
+```
+namespace: "research-project"
+├── entity: "agent-researcher"    ← researcher's private memories
+├── entity: "agent-coder"         ← coder's private memories
+└── entity: "shared"              ← shared context both agents can read
+```
+
+---
+
+## Setup
+
+Create a client per agent, all sharing the same namespace:
+
+```ts
+import { MemLib } from "memlib";
+
+const API_KEY = process.env.MEMLIB_API_KEY!;
+const NAMESPACE = "research-project";
+
+// Each agent gets its own client with a unique entity
+const researcherMem = new MemLib({
+  apiKey: API_KEY,
+  namespace: NAMESPACE,
+  entity: "agent-researcher",
+});
+
+const coderMem = new MemLib({
+  apiKey: API_KEY,
+  namespace: NAMESPACE,
+  entity: "agent-coder",
+});
+
+// Shared memory — both agents can write and read
+const sharedMem = new MemLib({
+  apiKey: API_KEY,
+  namespace: NAMESPACE,
+  entity: "shared",
+});
+```
+
+---
+
+## Writing Private Memories
+
+Each agent stores facts in its own entity — invisible to others:
+
+```ts
+// Researcher stores findings
+await researcherMem.store({
+  content: "Found 3 papers on transformer attention mechanisms. Most promising is FlashAttention v2.",
+});
+
+// Coder stores implementation notes
+await coderMem.store({
+  content: "The attention kernel currently uses O(n²) memory. Need to refactor to use chunked processing.",
+});
+```
+
+These memories are fully isolated. The researcher can't recall the coder's memories, and vice versa.
+
+---
+
+## Sharing Context
+
+When an agent discovers something the team needs to know, write to the shared entity:
+
+```ts
+// Researcher shares a key finding
+await sharedMem.store({
+  content: "FlashAttention v2 reduces memory from O(n²) to O(n). Paper: https://arxiv.org/abs/2307.08691",
+});
+```
+
+Now any agent can recall from the shared entity:
+
+```ts
+// Coder checks shared context
+const shared = await coderMem.recall({
+  query: "memory optimization techniques",
+  entity: "shared",  // override entity to read from shared
+});
+```
+
+---
+
+## Cross-Agent Recall
+
+An agent can read from another agent's entity using per-call overrides:
+
+```ts
+// Coder peeks at what the researcher found
+const researchFindings = await coderMem.recall({
+  query: "attention mechanism papers",
+  entity: "agent-researcher",  // read from researcher's entity
+});
+```
+
+This is useful for handoffs — when one agent needs to understand what another agent has already done.
+
+---
+
+## Agent Handoff with Diff
+
+When an orchestrator hands work from one agent to another, use `diff()` to summarize what happened:
+
+```ts
+async function handoff(
+  fromAgent: MemLib,
+  toAgent: MemLib,
+  fromEntity: string,
+  handoffTime: string,
+) {
+  // Get what the first agent learned
+  const diff = await fromAgent.diff({
+    since: handoffTime,
+    entity: fromEntity,
+  });
+
+  if (diff.changeCount === 0) return "No new findings.";
+
+  const lines: string[] = [];
+  for (const c of diff.created) {
+    lines.push(`- ${c.content}`);
+  }
+
+  return `Findings from ${fromEntity}:\n${lines.join("\n")}`;
+}
+
+// Orchestrator builds a briefing for the coder
+const briefing = await handoff(
+  researcherMem,
+  coderMem,
+  "agent-researcher",
+  taskStartTime,
+);
+```
+
+---
+
+## Scoping Strategies
+
+| Strategy | Namespace | Entity | Use Case |
+|----------|-----------|--------|----------|
+| **Per-agent isolation** | project name | agent name | Default — each agent has private memory |
+| **Shared knowledge base** | project name | `"shared"` | Team-wide facts |
+| **Per-task isolation** | project name | `"task-{taskId}"` | Isolate memory per task/job |
+| **Cross-project** | different namespaces | agent name | Agent works across projects |
+
+---
+
+## Important Notes
+
+- **Recall is always scoped** to a single `(namespace, entity)` pair. There's no broadcast query across all entities.
+- **To share, write explicitly** to a shared entity. There's no implicit cross-entity visibility.
+- **Use per-call overrides** (`entity: "..."`) to read or write to a different agent's memory without creating a new client.

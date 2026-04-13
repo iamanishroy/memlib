@@ -1,0 +1,155 @@
+---
+title: Supported Providers
+description: LLM and embedding providers supported by MemLib
+---
+
+## Overview
+
+MemLib supports multiple AI providers for both LLM (text generation) and embedding (vector generation). You configure your providers when creating a project in the dashboard.
+
+---
+
+## LLM Providers
+
+Used for fact extraction, conflict resolution, context synthesis, and consolidation.
+
+### Google Gemini
+
+| Model | Context Window | Default |
+|-------|---------------|---------|
+| `gemini-2.0-flash` | 1M tokens | ✅ |
+| `gemini-1.5-flash` | 1M tokens | |
+| `gemini-1.5-pro` | 2M tokens | |
+
+**API Key:** Get from [Google AI Studio](https://aistudio.google.com/apikey)
+
+### OpenAI
+
+| Model | Context Window | Default |
+|-------|---------------|---------|
+| `gpt-4o` | 128K tokens | ✅ |
+| `gpt-4o-mini` | 128K tokens | |
+| `gpt-4-turbo` | 128K tokens | |
+
+**API Key:** Get from [OpenAI Platform](https://platform.openai.com/api-keys)
+
+### Anthropic
+
+| Model | Context Window | Default |
+|-------|---------------|---------|
+| `claude-4-sonnet` | 200K tokens | ✅ |
+| `claude-3.5-haiku` | 200K tokens | |
+
+**API Key:** Get from [Anthropic Console](https://console.anthropic.com/)
+
+### Mistral
+
+| Model | Context Window | Default |
+|-------|---------------|---------|
+| `mistral-large-latest` | 128K tokens | ✅ |
+| `mistral-small-latest` | 128K tokens | |
+
+**API Key:** Get from [Mistral Console](https://console.mistral.ai/)
+
+### Groq
+
+| Model | Context Window | Default |
+|-------|---------------|---------|
+| `llama-3.3-70b-versatile` | 128K tokens | ✅ |
+| `gemma2-9b-it` | 8K tokens | |
+
+**API Key:** Get from [Groq Console](https://console.groq.com/)
+
+### xAI
+
+| Model | Context Window | Default |
+|-------|---------------|---------|
+| `grok-2` | 128K tokens | ✅ |
+| `grok-2-mini` | 128K tokens | |
+
+**API Key:** Get from [xAI Console](https://console.x.ai/)
+
+### Cohere
+
+| Model | Context Window | Default |
+|-------|---------------|---------|
+| `command-r-plus` | 128K tokens | ✅ |
+| `command-r` | 128K tokens | |
+
+**API Key:** Get from [Cohere Dashboard](https://dashboard.cohere.com/)
+
+### OpenRouter
+
+| Model | Description | Default |
+|-------|-------------|---------|
+| Any | Access any model via OpenRouter | — |
+
+**API Key:** Get from [OpenRouter](https://openrouter.ai/)
+
+> OpenRouter lets you use models from any provider through a single API. Useful if you want to experiment with different models without managing multiple API keys.
+
+---
+
+## Embedding Providers
+
+Used for generating vector embeddings for semantic search.
+
+### Google Gemini
+
+| Model | Dimensions | Default |
+|-------|-----------|---------|
+| `text-embedding-004` | 768 | ✅ |
+
+### OpenAI
+
+| Model | Dimensions | Default |
+|-------|-----------|---------|
+| `text-embedding-3-small` | 1536 | ✅ |
+| `text-embedding-3-large` | 3072 | |
+
+### Cohere
+
+| Model | Dimensions | Default |
+|-------|-----------|---------|
+| `embed-english-v3.0` | 1024 | ✅ |
+| `embed-multilingual-v3.0` | 1024 | |
+
+### Mistral
+
+| Model | Dimensions | Default |
+|-------|-----------|---------|
+| `mistral-embed` | 1024 | ✅ |
+
+### Voyage
+
+| Model | Dimensions | Default |
+|-------|-----------|---------|
+| `voyage-3` | 1024 | ✅ |
+| `voyage-3-lite` | 512 | |
+
+**API Key:** Get from [Voyage AI](https://www.voyageai.com/)
+
+---
+
+## Choosing a Provider
+
+### For Best Quality
+- **LLM:** OpenAI GPT-4o or Anthropic Claude 4 Sonnet
+- **Embedding:** OpenAI text-embedding-3-large
+
+### For Best Speed
+- **LLM:** Groq (LLaMA 3.3 70B) or Google Gemini 2.0 Flash
+- **Embedding:** Google Gemini text-embedding-004
+
+### For Lowest Cost
+- **LLM:** Google Gemini 2.0 Flash or Groq
+- **Embedding:** Google Gemini text-embedding-004
+
+### For Best Multilingual Support
+- **Embedding:** Cohere embed-multilingual-v3.0
+
+---
+
+## Custom Providers
+
+If your provider is OpenAI-compatible (most are), you can use it by selecting **OpenRouter** as the provider and configuring a custom base URL in your project settings.

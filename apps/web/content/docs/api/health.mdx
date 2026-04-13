@@ -1,0 +1,54 @@
+---
+title: Health Check
+description: "GET /health — Verify API connectivity"
+---
+
+## Endpoints
+
+MemLib exposes two health endpoints:
+
+### Public Health Check
+
+```
+GET /v1/health
+```
+
+**Permission:** None (public)
+
+Returns a simple `"OK"` string. No API key required. Use this for uptime monitoring and load balancer health checks.
+
+```bash
+curl "https://mem.anishroy.com/api/v1/health"
+```
+
+**Response:**
+```
+OK
+```
+
+---
+
+### Memory Service Health Check
+
+```
+GET /v1/memory/health
+```
+
+**Permission:** Read
+
+Tests the full pipeline — API auth, database connection, and service readiness. Requires a valid API key.
+
+```bash
+curl "https://mem.anishroy.com/api/v1/memory/health" \
+  -H "Authorization: Bearer sk_your_api_key"
+```
+
+**Response:**
+```json
+{
+  "status": "ok",
+  "db": "connected"
+}
+```
+
+Use the public endpoint for infrastructure monitoring and the memory service endpoint for verifying your API key and database connection are working.

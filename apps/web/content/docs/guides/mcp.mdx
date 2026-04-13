@@ -1,0 +1,228 @@
+---
+title: MCP Integration
+description: Connect MemLib to Claude Desktop, Cursor, and other MCP clients
+---
+
+## Overview
+
+MemLib includes a built-in **Model Context Protocol (MCP)** server that lets any MCP-compatible client — Claude Desktop, Cursor, Windsurf, and others — use your memories directly.
+
+The MCP server uses **Streamable HTTP** transport at a single endpoint:
+
+```
+https://mem.anishroy.com/api/mcp
+```
+
+---
+
+## Authentication & Scope
+
+The MCP server uses **HTTP headers** for authentication and scoping:
+
+| Header | Required | Description |
+|--------|----------|-------------|
+| `Authorization` | ✅ | `Bearer sk_your_api_key` — your project API key |
+| `X-MemLib-Namespace` | — | Lock tools to a specific namespace |
+| `X-MemLib-Entity` | — | Lock tools to a specific entity |
+
+### Locked vs Unlocked Mode
+
+| Mode | When | Effect |
+|------|------|--------|
+| **Locked** | Both `X-MemLib-Namespace` and `X-MemLib-Entity` headers are set | Tools omit namespace/entity from their schemas — the AI calls tools without routing decisions |
+| **Unlocked** | Either header is missing | Tools include namespace and entity as required parameters — the AI must specify them on each call |
+
+**Locked mode** is recommended for most use cases. It simplifies tool calls and prevents the AI from accidentally storing/querying the wrong scope.
+
+---
+
+## Setup
+
+### 1. Get Your API Key
+
+From your project dashboard, go to **API Keys** and create a key with the appropriate permission level:
+- **Read** — recall, prepare, diff, list only
+- **Read & Write** — also allows storing memories
+- **Admin** — full access
+
+### 2. Configure Your Client
+
+The MCP server expects auth and scope via **headers**, not query parameters. Here's how to configure each client:
+
+#### Cursor
+
+Add to `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "memlib": {
+      "url": "https://mem.anishroy.com/api/mcp",
+      "headers": {
+        "Authorization": "Bearer sk_your_api_key",
+        "X-MemLib-Namespace": "my-app",
+        "X-MemLib-Entity": "user-123"
+      }
+    }
+  }
+}
+```
+
+#### Claude Desktop
+
+Add to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "memlib": {
+      "url": "https://mem.anishroy.com/api/mcp",
+      "headers": {
+        "Authorization": "Bearer sk_your_api_key",
+        "X-MemLib-Namespace": "my-app",
+        "X-MemLib-Entity": "user-123"
+      }
+    }
+  }
+}
+```
+
+#### Windsurf
+
+Add to `.windsurf/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "memlib": {
+      "url": "https://mem.anishroy.com/api/mcp",
+      "headers": {
+        "Authorization": "Bearer sk_your_api_key",
+        "X-MemLib-Namespace": "my-app",
+        "X-MemLib-Entity": "user-123"
+      }
+    }
+  }
+}
+```
+
+#### Unlocked Mode (no scope headers)
+
+Omit the scope headers to let the AI specify namespace/entity on each tool call:
+
+```json
+{
+  "mcpServers": {
+    "memlib": {
+      "url": "https://mem.anishroy.com/api/mcp",
+      "headers": {
+        "Authorization": "Bearer sk_your_api_key"
+      }
+    }
+  }
+}
+```
+
+---
+
+## Tool Filtering
+
+You can exclude specific tools using the `excludeTools` query parameter:
+
+```
+https://mem.anishroy.com/api/mcp?excludeTools=store_memory,diff_memories
+```
+
+This is useful if you want to limit what the AI can do — for example, exposing only read tools.
+
+You can also configure this from the **MCP page** in your project dashboard by toggling tools on/off.
+
+---
+
+## Available Tools
+
+The MCP server exposes 5 tools:
+
+### `store_memory`
+
+Store a memory with automatic fact extraction, deduplication, and conflict resolution.
+
+**Permission:** Read & Write
+
+**Parameters:**
+- `content` (required) — the information to remember
+- `tags` (optional) — tags for categorization
+- `source` (optional) — origin identifier
+- `namespace` / `entity` (only in unlocked mode)
+
+### `recall_memories`
+
+Search memories by semantic similarity. Returns results ranked by hybrid score.
+
+**Permission:** Read
+
+**Parameters:**
+- `query` (required) — natural language search query
+- `limit` (optional) — max results
+- `category` (optional) — filter by category
+- `min_importance` (optional) — minimum importance score
+- `tags` (optional) — filter by tags
+
+### `list_memories`
+
+List stored memories.
+
+**Permission:** Read
+
+**Parameters:**
+- `limit` (optional) — max results to return
+
+### `prepare_context`
+
+Synthesize relevant memories into a context paragraph. Analyzes conversation intent, runs multi-query recall, and generates a briefing.
+
+**Permission:** Read
+
+**Parameters:**
+- `messages` (required) — conversation messages to analyze
+- `max_candidates` (optional) — max memories to consider
+
+### `diff_memories`
+
+Memory changelog — what changed since a timestamp. Zero LLM calls.
+
+**Permission:** Read
+
+**Parameters:**
+- `since` (required) — ISO timestamp
+- `limit` (optional) — max events
+
+---
+
+## Dashboard Config Builder
+
+The easiest way to set up MCP is from the **MCP page** in your project dashboard. It provides:
+
+- **Client presets** — select Cursor, Claude Desktop, Windsurf, or Generic
+- **Scope configuration** — set namespace and entity
+- **Tool filtering** — toggle tools on/off
+- **Test connection** — verify your API key and endpoint work
+- **Copy config** — one-click copy of the generated JSON config
+
+---
+
+## Example Usage
+
+Once configured, your AI assistant can use MemLib tools naturally:
+
+> **User:** "Remember that I prefer TypeScript and dark mode"
+>
+> **Claude:** *calls `store_memory` with content "I prefer TypeScript and dark mode"*
+>
+> "I've stored that! I'll remember your preference for TypeScript and dark mode."
+
+> **User:** "What do you know about my tech preferences?"
+>
+> **Claude:** *calls `recall_memories` with query "tech preferences"*
+>
+> "Based on what I remember: you prefer TypeScript, use dark mode, and your team uses React with Next.js."

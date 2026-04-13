@@ -1,0 +1,208 @@
+---
+title: Namespace Design Patterns
+description: Strategies for organizing memories in multi-tenant and multi-user applications
+---
+
+## Choosing Your Hierarchy
+
+Every memory in MemLib lives at a `(namespace, entity)` coordinate. How you assign these determines your data isolation and query boundaries.
+
+**The rule:** Recall and prepare always search within a single `(namespace, entity)` pair. Design your hierarchy around what should be queryable together.
+
+---
+
+## Pattern 1: Per-User (Most Common)
+
+Each user gets their own entity within your application's namespace:
+
+```ts
+const mem = new MemLib({
+  apiKey: "sk_...",
+  namespace: "my-app",
+  entity: `user-${userId}`,
+});
+```
+
+```
+namespace: "my-app"
+├── entity: "user-alice"     → Alice's memories
+├── entity: "user-bob"       → Bob's memories
+└── entity: "user-charlie"   → Charlie's memories
+```
+
+**Best for:** Chatbots, personal assistants, any app with user accounts.
+
+---
+
+## Pattern 2: Multi-Tenant SaaS
+
+Each tenant (organization) gets a namespace, users get entities:
+
+```ts
+const mem = new MemLib({
+  apiKey: "sk_...",
+  namespace: `org-${orgId}`,
+  entity: `user-${userId}`,
+});
+```
+
+```
+namespace: "org-acme"
+├── entity: "user-alice"     → Alice at Acme
+├── entity: "user-bob"       → Bob at Acme
+└── entity: "shared"         → Acme-wide knowledge
+
+namespace: "org-globex"
+├── entity: "user-charlie"   → Charlie at Globex
+└── entity: "shared"         → Globex-wide knowledge
+```
+
+**Best for:** B2B SaaS where teams need isolation but share a project.
+
+---
+
+## Pattern 3: Per-Feature
+
+Different features of your app use different namespaces:
+
+```ts
+// Support bot
+const supportMem = new MemLib({
+  apiKey: "sk_...",
+  namespace: "support",
+  entity: `user-${userId}`,
+});
+
+// Onboarding flow
+const onboardingMem = new MemLib({
+  apiKey: "sk_...",
+  namespace: "onboarding",
+  entity: `user-${userId}`,
+});
+```
+
+```
+namespace: "support"          → support-specific memories
+namespace: "onboarding"       → onboarding-specific memories
+namespace: "recommendations"  → recommendation engine memories
+```
+
+**Best for:** Large apps where different modules shouldn't leak context into each other.
+
+---
+
+## Pattern 4: Per-Conversation
+
+Each conversation gets its own entity — memories are scoped to a single thread:
+
+```ts
+const mem = new MemLib({
+  apiKey: "sk_...",
+  namespace: `user-${userId}`,
+  entity: `conv-${conversationId}`,
+});
+```
+
+```
+namespace: "user-alice"
+├── entity: "conv-abc123"    → conversation 1
+├── entity: "conv-def456"    → conversation 2
+└── entity: "persistent"     → cross-conversation memories
+```
+
+**Best for:** Apps where each conversation is independent (customer service tickets, coaching sessions).
+
+---
+
+## Pattern 5: Hierarchical Lookup
+
+For apps that need both user-specific and shared context, query multiple scopes:
+
+```ts
+const mem = new MemLib({
+  apiKey: "sk_...",
+  namespace: `org-${orgId}`,
+});
+
+async function getFullContext(userId: string, query: string) {
+  // 1. User-specific memories
+  const userMemories = await mem.recall({
+    query,
+    entity: `user-${userId}`,
+    limit: 5,
+  });
+
+  // 2. Team-wide knowledge
+  const teamMemories = await mem.recall({
+    query,
+    entity: "shared",
+    limit: 3,
+  });
+
+  // 3. Combine and deduplicate
+  const all = [...userMemories, ...teamMemories];
+  const unique = all.filter(
+    (m, i, arr) => arr.findIndex((x) => x.id === m.id) === i,
+  );
+
+  // 4. Sort by score
+  return unique.sort((a, b) => b.score - a.score);
+}
+```
+
+**Best for:** Apps where user context should be supplemented with team knowledge.
+
+---
+
+## Anti-Patterns
+
+### ❌ Everything in one entity
+
+```ts
+// Don't do this — all users share the same memory space
+const mem = new MemLib({
+  apiKey: "sk_...",
+  namespace: "my-app",
+  entity: "all-users",
+});
+```
+
+**Why it's bad:** Alice's memories pollute Bob's recall results. No isolation, no scalability.
+
+### ❌ Too many namespaces
+
+```ts
+// Don't do this — one namespace per user
+const mem = new MemLib({
+  apiKey: "sk_...",
+  namespace: `user-${userId}`,
+  entity: "default",
+});
+```
+
+**Why it's suboptimal:** This works, but it wastes the two-level hierarchy. If you later need sub-scoping (per-conversation, per-feature), you have no entity dimension left. Prefer `namespace: "my-app", entity: "user-{id}"`.
+
+### ❌ Dynamic namespace generation
+
+```ts
+// Don't do this
+const mem = new MemLib({
+  apiKey: "sk_...",
+  namespace: `${feature}-${env}-${region}-${date}`,
+  entity: userId,
+});
+```
+
+**Why it's bad:** Namespace proliferation makes it impossible to query across related data. Keep namespaces stable and meaningful.
+
+---
+
+## Decision Guide
+
+| Question | Answer | Pattern |
+|----------|--------|---------|
+| One app, many users? | → | Per-User (`namespace: "app", entity: "user-{id}"`) |
+| Multi-tenant SaaS? | → | Multi-Tenant (`namespace: "org-{id}", entity: "user-{id}"`) |
+| Multiple app modules? | → | Per-Feature (`namespace: "{feature}", entity: "user-{id}"`) |
+| Independent conversations? | → | Per-Conversation (`namespace: "user-{id}", entity: "conv-{id}"`) |
+| Need shared + personal? | → | Hierarchical Lookup (query multiple entities) |

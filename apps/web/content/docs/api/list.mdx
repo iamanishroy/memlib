@@ -1,0 +1,56 @@
+---
+title: List Memories
+description: "GET /memory — List stored memories in a namespace"
+---
+
+## Endpoint
+
+```
+GET /v1/memory?namespace=my-app&entity=user-123&limit=50
+```
+
+**Permission:** Read
+
+---
+
+## Query Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `namespace` | `string` | ✅ | — | Memory namespace |
+| `entity` | `string` | — | — | Filter by entity |
+| `limit` | `number` | — | — | Maximum memories to return |
+
+---
+
+## Response
+
+```json
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "namespace": "my-app",
+    "entity": "user-123",
+    "content": "Prefers dark mode",
+    "category": "preference",
+    "tags": ["ui"],
+    "metadata": null,
+    "importance": 0.7,
+    "source": "conversation",
+    "createdAt": "2024-03-20T10:00:00.000Z",
+    "lastAccessed": "2024-03-21T09:00:00.000Z",
+    "expiresAt": null
+  }
+]
+```
+
+---
+
+## curl Example
+
+```bash
+curl "https://mem.anishroy.com/api/v1/memory?namespace=my-app&entity=user-123&limit=20" \
+  -H "Authorization: Bearer sk_your_api_key"
+```
+
+> **Note:** In the REST API, `entity` is optional — you can list all memories across entities in a namespace. In the SDK, `entity` is resolved from the constructor default or per-call override and is always required.

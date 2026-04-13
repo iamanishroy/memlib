@@ -2,9 +2,15 @@
   "pages": [
     "index",
     "quickstart",
+    "---Concepts---",
+    "...concepts",
     "---SDK---",
-    "sdk",
-    "---API---",
-    "api-reference"
+    "...sdk",
+    "---REST API---",
+    "...api",
+    "---Guides---",
+    "...guides",
+    "---Reference---",
+    "...reference"
   ]
 }

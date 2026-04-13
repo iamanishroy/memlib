@@ -1,0 +1,130 @@
+---
+title: store()
+description: Store memories with optional LLM-powered fact extraction
+---
+
+## Signature
+
+```ts
+mem.store(options: StoreOptions): Promise<StoreResult>
+```
+
+---
+
+## Smart Store (Default)
+
+By default, `store()` uses the [smart store pipeline](/docs/concepts/smart-store) — the API extracts atomic facts from your content, deduplicates against existing memories, and resolves conflicts automatically.
+
+```ts
+const result = await mem.store({
+  content: "I switched from VS Code to Cursor. Love the AI features.",
+  source: "conversation",
+  tags: ["preference"],
+});
+
+console.log(result.memories);
+// [
+//   { content: "Uses Cursor as primary editor", category: "preference", event: "ADD" },
+//   { content: "Switched from VS Code to Cursor", category: "preference", event: "REPLACE" },
+// ]
+
+console.log(result.skipped);   // 0 — no duplicates
+console.log(result.conflicts); // 1 — resolved VS Code → Cursor
+```
+
+### What Happens
+
+1. **Extract** — LLM parses your text into atomic facts with importance scores and categories
+2. **Embed** — each fact is converted to a vector embedding
+3. **Deduplicate** — each fact is compared against existing memories (cosine similarity > 0.95 → skip)
+4. **Resolve conflicts** — facts with 0.85–0.95 similarity are resolved via LLM (merge, replace, keep, or contradict)
+5. **Store** — new and resolved facts are inserted into your database
+
+---
+
+## Raw Store
+
+Skip LLM inference and store the content exactly as provided:
+
+```ts
+const result = await mem.store({
+  content: "Exact fact to store verbatim",
+  infer: false,
+});
+```
+
+Raw store still performs basic deduplication (similarity > 0.95 check) but makes **zero LLM calls**.
+
+---
+
+## Options
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `content` | `string` | ✅ | — | Text to store |
+| `namespace` | `string` | — | constructor default | Override namespace |
+| `entity` | `string` | — | constructor default | Override entity |
+| `infer` | `boolean` | — | `true` | Use smart store with LLM extraction |
+| `tags` | `string[]` | — | — | Tags for categorization |
+| `metadata` | `Record<string, unknown>` | — | — | Arbitrary key-value metadata |
+| `source` | `string` | — | — | Origin identifier (e.g., `"conversation"`, `"api"`, `"import"`) |
+| `ttl` | `number` | — | — | Time-to-live in seconds. Memory expires after this duration. |
+
+---
+
+## Return Type
+
+```ts
+interface StoreResult {
+  /** Array of stored/updated memories with their resolution event */
+  memories: (Memory & { event: string })[];
+  /** Count of duplicate facts that were skipped */
+  skipped: number;
+  /** Count of conflicts detected and resolved */
+  conflicts: number;
+}
+```
+
+### Event Types
+
+| Event | Meaning |
+|-------|---------|
+| `ADD` | New memory inserted |
+| `MERGE` | Combined with an existing memory |
+| `REPLACE` | Superseded an existing memory |
+| `KEEP_EXISTING` | Existing memory kept, new fact skipped |
+| `SKIP_DUPLICATE` | Exact duplicate, skipped entirely |
+
+---
+
+## Examples
+
+### Store with metadata and tags
+
+```ts
+await mem.store({
+  content: "Meeting with design team moved to Thursdays at 3pm",
+  tags: ["meeting", "schedule"],
+  metadata: { updatedBy: "calendar-sync" },
+  source: "calendar",
+});
+```
+
+### Store with TTL (auto-expiration)
+
+```ts
+await mem.store({
+  content: "User is currently browsing the pricing page",
+  ttl: 3600,  // expire after 1 hour
+  source: "analytics",
+});
+```
+
+### Store to a different entity
+
+```ts
+await mem.store({
+  content: "Prefers email over Slack for async communication",
+  entity: "user-456",  // override constructor default
+});
+```

@@ -1,0 +1,167 @@
+---
+title: Namespaces & Entities
+description: How MemLib organizes memories with namespace and entity scoping
+---
+
+## The Two-Level Scope
+
+Every memory in MemLib belongs to a **namespace** and an **entity**. Together, these create a two-level hierarchy for organizing memories:
+
+```
+namespace: "my-app"
+├── entity: "user-alice"
+│   ├── "Prefers dark mode"
+│   ├── "Uses TypeScript"
+│   └── "Lives in Berlin"
+├── entity: "user-bob"
+│   ├── "Likes Python"
+│   └── "Works at Acme Corp"
+└── entity: "team-eng"
+    └── "Sprint planning on Mondays"
+```
+
+### Namespace
+
+A **namespace** is the top-level scope — typically your application name, tenant ID, or project identifier.
+
+- All operations are scoped to a namespace
+- Memories in different namespaces are fully isolated
+- Think of it as a "database" within your MemLib project
+
+### Entity
+
+An **entity** is the sub-scope within a namespace — typically a user ID, session ID, or agent ID.
+
+- Most operations require both namespace and entity
+- Recall searches within a single entity by default
+- Think of it as a "table" within a namespace
+
+---
+
+## Setting Scope
+
+You can set namespace and entity in two ways:
+
+### Constructor Defaults
+
+Set them once when creating the client. All operations will use these defaults:
+
+```ts
+const mem = new MemLib({
+  apiKey: "sk_...",
+  namespace: "my-app",
+  entity: "user-alice",
+});
+
+// These use namespace="my-app", entity="user-alice"
+await mem.store({ content: "Likes hiking" });
+await mem.recall({ query: "hobbies" });
+```
+
+### Per-Call Overrides
+
+Override the defaults for a specific operation:
+
+```ts
+// Store to a different entity
+await mem.store({
+  content: "Meeting with Alice at 2pm",
+  namespace: "my-app",
+  entity: "user-bob",
+});
+
+// Recall from a different namespace entirely
+await mem.recall({
+  query: "project deadlines",
+  namespace: "work-tracker",
+  entity: "team-eng",
+});
+```
+
+---
+
+## Common Patterns
+
+### Per-User Memory
+
+The most common pattern — each user has their own memory space:
+
+```ts
+const mem = new MemLib({
+  apiKey: "sk_...",
+  namespace: "my-chatbot",
+  entity: `user-${userId}`,
+});
+```
+
+### Per-Session Memory
+
+For applications that track conversational context per session:
+
+```ts
+const mem = new MemLib({
+  apiKey: "sk_...",
+  namespace: "my-app",
+  entity: `session-${sessionId}`,
+});
+```
+
+### Multi-Agent Systems
+
+Each agent maintains its own memory, scoped by agent name:
+
+```ts
+// Research agent
+const researchMem = new MemLib({
+  apiKey: "sk_...",
+  namespace: "research-project",
+  entity: "agent-researcher",
+});
+
+// Coding agent
+const codeMem = new MemLib({
+  apiKey: "sk_...",
+  namespace: "research-project",
+  entity: "agent-coder",
+});
+```
+
+### Shared Knowledge Base
+
+Use a single entity for team-wide or global knowledge:
+
+```ts
+const shared = new MemLib({
+  apiKey: "sk_...",
+  namespace: "company",
+  entity: "shared",
+});
+```
+
+---
+
+## Scoping in the REST API
+
+When using the REST API directly, namespace and entity are required fields in every request body:
+
+```bash
+curl -X POST https://mem.anishroy.com/api/v1/memory \
+  -H "Authorization: Bearer sk_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "namespace": "my-app",
+    "entity": "user-alice",
+    "content": "Prefers dark mode"
+  }'
+```
+
+For `list` operations, entity is optional — you can list all memories across entities in a namespace.
+
+---
+
+## Important Notes
+
+- **Namespace + entity = isolation boundary.** Recall and prepare only search within a single namespace/entity pair.
+- **No implicit sharing.** Memories stored under one entity are never returned when querying a different entity.
+- **Consolidation is scoped.** Memory consolidation groups by `(namespace, entity, category)`, so unrelated facts are never merged together.
+- **Diff is scoped.** The memory changelog only returns events within the specified namespace/entity.

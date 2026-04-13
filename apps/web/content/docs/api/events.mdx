@@ -1,0 +1,80 @@
+---
+title: Events (Audit Trail)
+description: "GET /memory/events — Query the memory audit trail"
+---
+
+## Endpoint
+
+```
+GET /v1/memory/events?namespace=my-app&memoryId=uuid&limit=50
+```
+
+**Permission:** Read
+
+---
+
+## Query Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `namespace` | `string` | ✅ | — | Memory namespace |
+| `memoryId` | `string` (UUID) | — | — | Filter events for a specific memory |
+| `limit` | `number` | — | — | Maximum events to return |
+
+---
+
+## Response
+
+```json
+[
+  {
+    "id": "event-uuid",
+    "memoryId": "memory-uuid",
+    "namespace": "my-app",
+    "entity": "user-123",
+    "event": "ADD",
+    "oldContent": null,
+    "newContent": "Prefers dark mode",
+    "mergedFromId": null,
+    "reason": null,
+    "createdAt": "2024-03-20T10:00:00.000Z"
+  },
+  {
+    "id": "event-uuid-2",
+    "memoryId": "memory-uuid",
+    "namespace": "my-app",
+    "entity": "user-123",
+    "event": "REPLACE",
+    "oldContent": "Uses VS Code",
+    "newContent": "Uses Cursor (switched from VS Code)",
+    "mergedFromId": "old-memory-uuid",
+    "reason": "New preference supersedes old",
+    "createdAt": "2024-03-21T10:00:00.000Z"
+  }
+]
+```
+
+### Event Types
+
+| Event | Description |
+|-------|-------------|
+| `ADD` | New memory inserted |
+| `MERGE` | Two memories combined |
+| `REPLACE` | New fact superseded old |
+| `DELETE` | Memory deleted or archived |
+| `SKIP_DUPLICATE` | Near-duplicate skipped |
+| `KEEP_EXISTING` | Conflict resolved in favor of existing |
+
+---
+
+## curl Example
+
+```bash
+# All events in a namespace
+curl "https://mem.anishroy.com/api/v1/memory/events?namespace=my-app&limit=20" \
+  -H "Authorization: Bearer sk_your_api_key"
+
+# Events for a specific memory
+curl "https://mem.anishroy.com/api/v1/memory/events?namespace=my-app&memoryId=550e8400-e29b-41d4-a716-446655440000" \
+  -H "Authorization: Bearer sk_your_api_key"
+```

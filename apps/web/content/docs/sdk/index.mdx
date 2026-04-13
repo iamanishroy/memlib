@@ -1,0 +1,119 @@
+---
+title: SDK Overview
+description: Install and configure the MemLib TypeScript SDK
+---
+
+## Installation
+
+```bash
+npm install memlib
+```
+
+The SDK ships with full TypeScript types — no additional `@types` package needed.
+
+---
+
+## Configuration
+
+```ts
+import { MemLib } from "memlib";
+
+const mem = new MemLib({
+  apiKey: "sk_...",           // Required — your project API key
+  namespace: "my-app",       // Optional — default namespace for all calls
+  entity: "user-123",        // Optional — default entity for all calls
+  baseUrl: "https://...",    // Optional — defaults to MemLib cloud
+});
+```
+
+### Options
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `apiKey` | `string` | ✅ | — | API key from your [project dashboard](https://mem.anishroy.com) |
+| `namespace` | `string` | — | `""` | Default namespace for all calls. Can be overridden per-call. |
+| `entity` | `string` | — | `""` | Default entity for all calls. Can be overridden per-call. |
+| `baseUrl` | `string` | — | `"https://mem.anishroy.com/api"` | API base URL. Override for self-hosted instances. |
+
+> **Note:** If you don't set `namespace` or `entity` in the constructor, you **must** provide them in every call's options. Omitting both will throw an error.
+
+---
+
+## Methods Overview
+
+| Method | Description | LLM Calls |
+|--------|------------|-----------|
+| [`store()`](/docs/sdk/store) | Store a memory with optional LLM fact extraction | 0–2 |
+| [`recall()`](/docs/sdk/recall) | Semantic search — find memories by meaning | 0 |
+| [`prepare()`](/docs/sdk/prepare) | Synthesize a context paragraph from relevant memories | 2 |
+| [`diff()`](/docs/sdk/diff) | Memory changelog since a timestamp | 0 |
+| [`batchStore()`](/docs/sdk/batch-and-list) | Store multiple memories at once (raw) | 0 |
+| [`list()`](/docs/sdk/batch-and-list) | List stored memories | 0 |
+| [`delete()`](/docs/sdk/batch-and-list) | Delete a memory by ID | 0 |
+| [`health()`](/docs/sdk/batch-and-list) | Check API connectivity | 0 |
+
+---
+
+## Imports
+
+The SDK exports the main class and all types:
+
+```ts
+// Main class
+import { MemLib } from "memlib";
+
+// Error class
+import { MemLibError } from "memlib";
+
+// Types (for TypeScript users)
+import type {
+  MemLibConfig,
+  StoreOptions,
+  RecallOptions,
+  PrepareOptions,
+  DiffOptions,
+  BatchStoreOptions,
+  ListOptions,
+  Memory,
+  RetrievedMemory,
+  StoreResult,
+  PrepareResult,
+  DiffResult,
+  BatchStoreResult,
+  DeleteResult,
+  HealthResult,
+  Message,
+} from "memlib";
+```
+
+---
+
+## Quick Example
+
+```ts
+import { MemLib } from "memlib";
+
+const mem = new MemLib({
+  apiKey: "sk_your_key",
+  namespace: "my-app",
+  entity: "user-123",
+});
+
+// Store with smart extraction
+await mem.store({
+  content: "I prefer TypeScript. My team uses React and Next.js.",
+});
+
+// Recall by meaning
+const memories = await mem.recall({
+  query: "What tech stack?",
+});
+
+// Synthesize context for a conversation
+const { context } = await mem.prepare({
+  messages: [{ role: "user", content: "Help me setup a project" }],
+});
+
+// Check what changed
+const diff = await mem.diff({ since: "2024-01-01T00:00:00Z" });
+```

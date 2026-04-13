@@ -3,69 +3,125 @@ title: Quickstart
 description: Get started with MemLib in under 5 minutes
 ---
 
+## Prerequisites
+
+- A **PostgreSQL** database with the **pgvector** extension (Supabase, Neon, and Railway have this built-in)
+- An API key from a supported **embedding provider** (Gemini, OpenAI, etc.)
+- An API key from a supported **LLM provider** (Gemini, OpenAI, Anthropic, etc.)
+
+---
+
 ## 1. Create a Project
 
-Sign up at [mem.anishroy.com](https://mem.anishroy.com) and create a new project from the dashboard. You'll need to provide:
+Sign up at [mem.anishroy.com](https://mem.anishroy.com) and create a new project. You'll need to provide:
 
-- A **PostgreSQL database URL** (your own database where memories are stored)
-- An **embedding provider** (Gemini or OpenAI) with API key
-- An **LLM provider** (Gemini, OpenAI, or Anthropic) with API key
+- **Database URL** — your PostgreSQL connection string (this is where memories are stored)
+- **Embedding provider** — select a provider and paste your API key
+- **LLM provider** — select a provider and paste your API key
 
-## 2. Generate an API Key
+> **BYOD Model:** MemLib connects to your database at request time. Your data never leaves your infrastructure.
+
+---
+
+## 2. Run Migration
+
+Set up the memory tables in your database. From your project's API Keys page, create an **Admin** key, then run:
+
+```bash
+curl -X POST https://mem.anishroy.com/api/v1/memory/migrate \
+  -H "Authorization: Bearer sk_your_admin_key"
+```
+
+This creates the `memories` and `memory_events` tables with pgvector indexing.
+
+---
+
+## 3. Generate an API Key
 
 From your project's **API Keys** page, create a new key with **Read & Write** permission. Copy the key — you'll only see it once.
 
-## 3. Install the SDK
+---
+
+## 4. Install the SDK
 
 ```bash
 npm install memlib
 ```
 
-## 4. Initialize & Store
+---
+
+## 5. Store Your First Memory
 
 ```ts
 import { MemLib } from "memlib";
 
-const memlib = new MemLib({
+const mem = new MemLib({
   apiKey: "sk_your_api_key",
   namespace: "my-app",
   entity: "user-123",
 });
 
-// Store a memory (with LLM fact extraction)
-const result = await memlib.store({
+// Smart store — extracts facts, deduplicates, resolves conflicts
+const result = await mem.store({
   content: "I prefer dark mode and use TypeScript for all my projects",
 });
 
 console.log(result.memories);
-// → [{ content: "Prefers dark mode", ... }, { content: "Uses TypeScript", ... }]
+// → [
+//   { content: "Prefers dark mode", category: "preference", event: "ADD" },
+//   { content: "Uses TypeScript for all projects", category: "preference", event: "ADD" },
+// ]
 ```
 
-## 5. Recall Memories
+---
+
+## 6. Recall Memories
 
 ```ts
-const memories = await memlib.recall({
+const memories = await mem.recall({
   query: "What programming language does the user prefer?",
 });
 
 console.log(memories);
-// → [{ content: "Uses TypeScript for all projects", similarity: 0.92, ... }]
+// → [{ content: "Uses TypeScript for all projects", similarity: 0.92, score: 0.86, ... }]
 ```
 
-## 6. Prepare Context (for System Prompts)
+---
+
+## 7. Synthesize Context
 
 ```ts
-const { context } = await memlib.prepare({
-  messages: [
-    { role: "user", content: "Help me set up a new project" },
-  ],
+const { context } = await mem.prepare({
+  messages: [{ role: "user", content: "Help me set up a new project" }],
 });
+
+console.log(context);
+// → "The user prefers dark mode and uses TypeScript for all projects."
 
 // Inject into your LLM's system prompt:
 const systemPrompt = `You are a helpful assistant.\n\nUser context:\n${context}`;
 ```
 
+---
+
+## 8. Check What Changed
+
+```ts
+const diff = await mem.diff({
+  since: "2024-01-01T00:00:00Z",
+});
+
+console.log(diff.summary);        // "2 new"
+console.log(diff.created.length);  // 2
+```
+
+---
+
 ## Next Steps
 
-- [SDK Reference](/docs/sdk) — All methods and options
-- [API Reference](/docs/api-reference) — REST endpoints
+- **[How It Works](/docs/concepts/how-it-works)** — understand the architecture
+- **[Smart Store Pipeline](/docs/concepts/smart-store)** — how fact extraction and dedup work
+- **[SDK Reference](/docs/sdk)** — all methods and options
+- **[REST API Reference](/docs/api)** — HTTP endpoints
+- **[MCP Integration](/docs/guides/mcp)** — connect to Claude Desktop or Cursor
+- **[Add Memory to a Chatbot](/docs/guides/chatbot-memory)** — end-to-end tutorial

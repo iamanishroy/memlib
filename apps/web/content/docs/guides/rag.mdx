@@ -1,0 +1,175 @@
+---
+title: Memory for RAG
+description: Use MemLib as the retrieval layer in retrieval-augmented generation
+---
+
+## What This Solves
+
+Standard RAG retrieves documents from a vector database. MemLib adds a **memory layer** on top — it doesn't just find similar text, it understands facts, deduplicates, resolves contradictions, and scores by recency and importance.
+
+This makes it ideal for:
+- **User-specific RAG** — retrieve only what's relevant to this user
+- **Conversation-aware retrieval** — `prepare()` analyzes the conversation to generate targeted queries
+- **Living knowledge** — facts update when the user says something new, old contradictions are resolved
+
+---
+
+## Pattern 1: Direct Recall
+
+The simplest RAG pattern — use `recall()` to find relevant memories and inject them into your prompt:
+
+```ts
+import { MemLib } from "memlib";
+
+const mem = new MemLib({
+  apiKey: process.env.MEMLIB_API_KEY!,
+  namespace: "support-bot",
+  entity: `user-${userId}`,
+});
+
+async function generateResponse(userQuery: string) {
+  // 1. Retrieve relevant memories
+  const memories = await mem.recall({
+    query: userQuery,
+    limit: 5,
+  });
+
+  // 2. Format as context
+  const context = memories
+    .map((m) => `- ${m.content} (relevance: ${(m.score * 100).toFixed(0)}%)`)
+    .join("\n");
+
+  // 3. Build prompt with retrieved context
+  const systemPrompt = `You are a helpful support assistant.
+
+Known facts about this user:
+${context || "No prior context available."}
+
+Answer the user's question using the above context when relevant.`;
+
+  // 4. Pass to your LLM (any provider)
+  return callYourLLM(systemPrompt, userQuery);
+}
+```
+
+**When to use:** You want full control over how memories are formatted and injected.
+
+---
+
+## Pattern 2: Synthesized Context with prepare()
+
+`prepare()` does the RAG pipeline for you — it analyzes the conversation, generates multiple search queries, retrieves memories, and synthesizes a single context paragraph:
+
+```ts
+async function generateResponse(
+  messages: Array<{ role: "user" | "assistant"; content: string }>,
+) {
+  // 1. Get synthesized context (2 LLM calls)
+  const { context, memoriesUsed } = await mem.prepare({
+    messages: messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    })),
+  });
+
+  // 2. Inject directly into system prompt
+  const systemPrompt = `You are a helpful assistant.
+
+${context ? `About this user:\n${context}` : ""}`;
+
+  // 3. Generate response
+  return callYourLLM(systemPrompt, messages);
+}
+```
+
+**When to use:** You want the most relevant context with minimal code, and you're okay with 2 extra LLM calls.
+
+---
+
+## Pattern 3: Category-Filtered Retrieval
+
+When you know the topic area, filter by category for higher precision:
+
+```ts
+// User asks about food → retrieve health/preference memories
+const healthMemories = await mem.recall({
+  query: userQuery,
+  category: "health",
+  limit: 3,
+});
+
+const preferenceMemories = await mem.recall({
+  query: userQuery,
+  category: "preference",
+  limit: 3,
+});
+
+// Combine and deduplicate
+const allMemories = [...healthMemories, ...preferenceMemories];
+const unique = allMemories.filter(
+  (m, i, arr) => arr.findIndex((x) => x.id === m.id) === i,
+);
+```
+
+**When to use:** Your app has domain-specific logic about which types of memories to retrieve.
+
+---
+
+## Ingestion: Store as You Go
+
+To build the knowledge base, store conversational content after each interaction:
+
+```ts
+// After every user message
+await mem.store({
+  content: userMessage,
+  source: "conversation",
+});
+```
+
+The [smart store pipeline](/docs/concepts/smart-store) handles the rest:
+- Extracts atomic facts from natural language
+- Skips duplicates (similarity > 0.95)
+- Resolves contradictions with existing memories
+
+You don't need to preprocess or chunk the text — MemLib does it.
+
+---
+
+## Ingestion: Batch Import
+
+For bulk data (profiles, documents, CSV exports), use batch store:
+
+```ts
+// Import pre-structured facts
+await mem.batchStore({
+  memories: [
+    { content: "Premium subscriber since 2023" },
+    { content: "Preferred language: English" },
+    { content: "Account region: EU" },
+  ],
+});
+```
+
+Batch store uses raw storage — no LLM calls. Use it when your data is already structured.
+
+---
+
+## recall() vs prepare() for RAG
+
+| | `recall()` | `prepare()` |
+|---|-----------|------------|
+| **LLM calls** | 0 | 2 |
+| **Output** | Array of memory objects | Single context paragraph |
+| **Query strategy** | Single query | Multi-query (2–4 auto-generated) |
+| **Best for** | Full control, UI display, low latency | System prompt injection, best relevance |
+| **Cost** | Embedding only | Embedding + 2 LLM calls |
+
+---
+
+## Tips
+
+- **Store early, recall later.** Memories get better over time — the deduplication and conflict resolution ensure quality improves as more data flows in.
+- **Use `minImportance`** for critical operations. Set `minImportance: 0.8` when retrieving safety-critical info (allergies, permissions).
+- **Check `similarity`** on individual results. If the highest result has `similarity < 0.6`, the retrieval might not be relevant — handle this gracefully.
+- **Don't over-retrieve.** 5–10 memories is usually enough. More context can dilute the signal for your LLM.

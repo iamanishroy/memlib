@@ -1,0 +1,109 @@
+---
+title: Store Memory
+description: "POST /memory — Store a memory with optional LLM fact extraction"
+---
+
+## Endpoint
+
+```
+POST /v1/memory
+```
+
+**Permission:** Read & Write
+
+---
+
+## Request Body
+
+```json
+{
+  "namespace": "my-app",
+  "entity": "user-123",
+  "content": "I prefer dark mode and use TypeScript for all my projects",
+  "infer": true,
+  "tags": ["preferences"],
+  "metadata": { "source": "chat" },
+  "source": "conversation",
+  "ttl": 86400
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `namespace` | `string` | ✅ | — | Memory namespace |
+| `entity` | `string` | ✅ | — | Entity identifier |
+| `content` | `string` | ✅ | — | Text content to store |
+| `infer` | `boolean` | — | `true` | Use LLM to extract facts (smart store) |
+| `tags` | `string[]` | — | — | Tags for categorization |
+| `metadata` | `object` | — | — | Arbitrary key-value metadata |
+| `source` | `string` | — | — | Source identifier |
+| `ttl` | `number` | — | — | Time-to-live in seconds |
+
+---
+
+## Response
+
+```json
+{
+  "memories": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "namespace": "my-app",
+      "entity": "user-123",
+      "content": "Prefers dark mode",
+      "category": "preference",
+      "importance": 0.7,
+      "tags": ["preferences"],
+      "metadata": { "source": "chat" },
+      "source": "conversation",
+      "createdAt": "2024-03-20T10:00:00.000Z",
+      "event": "ADD"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "content": "Uses TypeScript for all projects",
+      "category": "preference",
+      "importance": 0.7,
+      "event": "ADD"
+    }
+  ],
+  "skipped": 0,
+  "conflicts": 0
+}
+```
+
+---
+
+## curl Example
+
+```bash
+curl -X POST https://mem.anishroy.com/api/v1/memory \
+  -H "Authorization: Bearer sk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "namespace": "my-app",
+    "entity": "user-123",
+    "content": "I prefer dark mode and use TypeScript",
+    "infer": true
+  }'
+```
+
+---
+
+## Raw Store
+
+Set `infer: false` to skip LLM fact extraction and store the content verbatim:
+
+```bash
+curl -X POST https://mem.anishroy.com/api/v1/memory \
+  -H "Authorization: Bearer sk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "namespace": "my-app",
+    "entity": "user-123",
+    "content": "Exact fact to store",
+    "infer": false
+  }'
+```
+
+See [Smart Store Pipeline](/docs/concepts/smart-store) for details on how the inference pipeline works.

@@ -1,0 +1,198 @@
+---
+title: Add Memory to a Chatbot
+description: End-to-end guide to adding persistent memory to your AI chatbot
+---
+
+## What You'll Build
+
+A chatbot that remembers facts about users across conversations. After this guide, your chatbot will:
+
+- **Remember** user preferences, facts, and context
+- **Recall** relevant memories when the user asks a question
+- **Synthesize** a context paragraph tailored to the current conversation
+
+---
+
+## Prerequisites
+
+- A MemLib project with an API key ([Quickstart](/docs/quickstart))
+- Node.js 18+
+- An OpenAI API key (or any LLM)
+
+---
+
+## Step 1: Install Dependencies
+
+```bash
+npm install memlib openai
+```
+
+---
+
+## Step 2: Initialize MemLib
+
+```ts
+import { MemLib } from "memlib";
+
+const mem = new MemLib({
+  apiKey: process.env.MEMLIB_API_KEY!,
+  namespace: "chatbot",
+});
+```
+
+---
+
+## Step 3: Store Memories After Each Conversation
+
+After every user message, store the content so MemLib can extract and retain useful facts:
+
+```ts
+async function handleMessage(userId: string, userMessage: string) {
+  // Store the user's message (smart store extracts facts automatically)
+  await mem.store({
+    content: userMessage,
+    entity: userId,
+    source: "conversation",
+  });
+}
+```
+
+The [smart store pipeline](/docs/concepts/smart-store) will:
+- Extract atomic facts from the message
+- Skip duplicates
+- Resolve conflicts with existing memories
+
+---
+
+## Step 4: Prepare Context Before Responding
+
+Before generating a response, use `prepare()` to get a tailored context paragraph:
+
+```ts
+import OpenAI from "openai";
+
+const openai = new OpenAI();
+
+async function respond(userId: string, messages: Array<{ role: string; content: string }>) {
+  // Get relevant context from memories
+  const { context } = await mem.prepare({
+    messages: messages.map((m) => ({
+      role: m.role as "user" | "assistant" | "system",
+      content: m.content,
+    })),
+    entity: userId,
+  });
+
+  // Build system prompt with memory context
+  const systemPrompt = `You are a helpful assistant with memory.
+
+${context ? `About this user:\n${context}` : ""}
+
+Be natural and reference what you know about the user when relevant.`;
+
+  // Generate response
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o",
+    messages: [
+      { role: "system", content: systemPrompt },
+      ...messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+    ],
+  });
+
+  return response.choices[0]?.message?.content ?? "";
+}
+```
+
+---
+
+## Step 5: Track Changes Between Sessions
+
+Use `diff()` to make your chatbot aware of preference changes:
+
+```ts
+async function getSessionBriefing(userId: string, lastSessionTime: string) {
+  const diff = await mem.diff({
+    since: lastSessionTime,
+    entity: userId,
+  });
+
+  if (diff.changeCount === 0) return null;
+
+  const changes: string[] = [];
+  for (const r of diff.replaced) {
+    changes.push(`Changed: "${r.oldContent}" → "${r.newContent}"`);
+  }
+  for (const c of diff.created) {
+    changes.push(`New: ${c.content}`);
+  }
+
+  return changes.join("\n");
+}
+```
+
+---
+
+## Full Example
+
+```ts
+import { MemLib } from "memlib";
+import OpenAI from "openai";
+
+const mem = new MemLib({
+  apiKey: process.env.MEMLIB_API_KEY!,
+  namespace: "chatbot",
+});
+
+const openai = new OpenAI();
+
+async function chat(userId: string, userMessage: string, history: Array<{ role: string; content: string }>) {
+  // 1. Store the user's message
+  await mem.store({
+    content: userMessage,
+    entity: userId,
+    source: "conversation",
+  });
+
+  // 2. Get memory context
+  const messages = [...history, { role: "user", content: userMessage }];
+  const { context } = await mem.prepare({
+    messages: messages.map((m) => ({
+      role: m.role as "user" | "assistant" | "system",
+      content: m.content,
+    })),
+    entity: userId,
+  });
+
+  // 3. Generate response with context
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o",
+    messages: [
+      {
+        role: "system",
+        content: `You are a helpful assistant with memory.\n\n${context ? `About this user:\n${context}` : ""}`,
+      },
+      ...messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+    ],
+  });
+
+  return response.choices[0]?.message?.content ?? "";
+}
+```
+
+---
+
+## What Happens
+
+1. **User says:** "I'm allergic to peanuts and I love sushi"
+2. **MemLib stores:** `"Allergic to peanuts" (health, 0.95)`, `"Loves sushi" (preference, 0.7)`
+3. **Next session, user says:** "What should I eat tonight?"
+4. **MemLib prepares:** `"The user is severely allergic to peanuts and loves sushi and Japanese food."`
+5. **Chatbot responds:** A personalized dinner suggestion, avoiding peanuts and recommending Japanese restaurants
+
+---
+
+## Next Steps
+
+- [SDK Reference](/docs/sdk) — full method documentation
+- [MCP Integration](/docs/guides/mcp) — let Claude/Cursor use your memories directly
+- [Categories](/docs/concepts/categories) — filter memories by type

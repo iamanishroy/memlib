@@ -1,0 +1,90 @@
+---
+title: API Overview
+description: Authentication, base URL, and permission levels for the MemLib REST API
+---
+
+## Base URL
+
+```
+https://mem.anishroy.com/api/v1
+```
+
+All endpoints are prefixed with `/v1`.
+
+---
+
+## Authentication
+
+Every request requires an API key in the `Authorization` header:
+
+```
+Authorization: Bearer sk_your_api_key
+```
+
+API keys are created from the project dashboard and are scoped to a single project.
+
+---
+
+## Permission Levels
+
+Each API key has a permission level that controls which endpoints it can access:
+
+| Level | Name | Operations |
+|-------|------|------------|
+| 1 | **Read** | list, recall, prepare, diff, events, health |
+| 2 | **Read & Write** | All Read + store, batchStore |
+| 3 | **Admin** | All Read & Write + delete, consolidate, migrate |
+
+If a request uses an API key without the required permission, the API returns `403 Forbidden`.
+
+---
+
+## Request Format
+
+- **Content-Type:** `application/json` for all POST/PUT requests
+- **Query parameters** for GET requests
+- **Path parameters** for resource-specific endpoints (e.g., `/memory/{memoryId}`)
+
+---
+
+## Response Format
+
+All responses return JSON. Successful responses return the resource data directly. Error responses follow this format:
+
+```json
+{
+  "error": "Human-readable error message"
+}
+```
+
+---
+
+## Error Codes
+
+| Status | Meaning |
+|--------|---------|
+| `200` | Success |
+| `400` | Bad Request — invalid or missing fields |
+| `401` | Unauthorized — invalid or missing API key |
+| `403` | Forbidden — insufficient permission level |
+| `404` | Not Found — resource doesn't exist |
+| `500` | Internal Server Error |
+
+---
+
+## Endpoints Summary
+
+| Method | Path | Permission | Description |
+|--------|------|-----------|-------------|
+| `POST` | [`/memory`](/docs/api/store) | Read & Write | Store a memory |
+| `POST` | [`/memory/recall`](/docs/api/recall) | Read | Semantic search |
+| `POST` | [`/memory/prepare`](/docs/api/prepare) | Read | Context synthesis |
+| `POST` | [`/memory/diff`](/docs/api/diff) | Read | Memory changelog |
+| `GET` | [`/memory`](/docs/api/list) | Read | List memories |
+| `POST` | [`/memory/batch`](/docs/api/batch) | Read & Write | Batch store |
+| `DELETE` | [`/memory/{memoryId}`](/docs/api/delete) | Admin | Delete a memory |
+| `GET` | [`/memory/events`](/docs/api/events) | Read | Audit trail |
+| `POST` | [`/memory/consolidate`](/docs/api/consolidate) | Admin | Consolidate old memories |
+| `GET` | [`/health`](/docs/api/health) | None (public) | Basic health check |
+| `GET` | [`/memory/health`](/docs/api/health) | Read | Memory service health check |
+

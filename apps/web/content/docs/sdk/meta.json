@@ -1,0 +1,12 @@
+{
+  "title": "SDK Reference",
+  "pages": [
+    "index",
+    "store",
+    "recall",
+    "prepare",
+    "diff",
+    "batch-and-list",
+    "error-handling"
+  ]
+}

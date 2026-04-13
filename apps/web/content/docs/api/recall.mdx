@@ -1,0 +1,75 @@
+---
+title: Semantic Recall
+description: "POST /memory/recall — Search memories by semantic similarity"
+---
+
+## Endpoint
+
+```
+POST /v1/memory/recall
+```
+
+**Permission:** Read
+
+---
+
+## Request Body
+
+```json
+{
+  "namespace": "my-app",
+  "entity": "user-123",
+  "query": "What theme does the user prefer?",
+  "category": "preference",
+  "limit": 10,
+  "tags": ["ui"],
+  "minImportance": 0.5
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `namespace` | `string` | ✅ | — | Memory namespace |
+| `entity` | `string` | ✅ | — | Entity identifier |
+| `query` | `string` | ✅ | — | Semantic search query |
+| `category` | `string` | — | — | Filter by category |
+| `limit` | `number` | — | `10` | Maximum results |
+| `tags` | `string[]` | — | — | Filter by matching tags |
+| `minImportance` | `number` | — | — | Minimum importance score (0.0–1.0) |
+
+---
+
+## Response
+
+```json
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "content": "Prefers dark mode",
+    "category": "preference",
+    "tags": ["ui"],
+    "metadata": null,
+    "importance": 0.7,
+    "similarity": 0.92,
+    "recency": 0.85,
+    "score": 0.862
+  }
+]
+```
+
+Results are ranked by [hybrid score](/docs/concepts/scoring): `0.6 × similarity + 0.2 × recency + 0.2 × importance`.
+
+---
+
+## curl Example
+
+```bash
+curl -X POST https://mem.anishroy.com/api/v1/memory/recall \
+  -H "Authorization: Bearer sk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "namespace": "my-app",
+    "entity": "user-123",
+    "query": "What theme does the user prefer?"
+  }'
+```

@@ -1,0 +1,110 @@
+---
+title: Self-Hosting
+description: Deploy your own MemLib instance
+---
+
+## Overview
+
+MemLib is fully open-source and can be self-hosted. This guide covers deploying the complete stack — the Next.js web dashboard, API routes, and database setup.
+
+---
+
+## Prerequisites
+
+- **Node.js** 18+
+- **PostgreSQL** with pgvector extension
+- An AI provider API key (Gemini, OpenAI, etc.)
+
+---
+
+## Step 1: Clone and Install
+
+```bash
+git clone https://github.com/yourusername/memlib.git
+cd memlib
+npm install
+```
+
+---
+
+## Step 2: Configure Environment
+
+Copy the example env file and fill in your values:
+
+```bash
+cp apps/web/.env.example apps/web/.env
+```
+
+Required environment variables:
+
+```bash
+# Database (your central MemLib database — stores projects, API keys, users)
+DATABASE_URL=postgres://user:pass@host:5432/memlib
+
+# Auth
+BETTER_AUTH_SECRET=your-secret-key
+BETTER_AUTH_URL=http://localhost:8001
+
+# OAuth providers (at least one)
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GITHUB_CLIENT_ID=...
+GITHUB_CLIENT_SECRET=...
+```
+
+---
+
+## Step 3: Push Database Schema
+
+```bash
+npm run db:push
+```
+
+This creates the project, API key, and user tables in your central database.
+
+---
+
+## Step 4: Run in Development
+
+```bash
+npm run dev
+```
+
+- **Dashboard:** [http://localhost:8001](http://localhost:8001)
+- **API:** [http://localhost:8001/api](http://localhost:8001/api)
+
+---
+
+## Step 5: Deploy to Production
+
+### Vercel (Recommended)
+
+The Next.js app deploys directly to Vercel:
+
+1. Push to GitHub
+2. Import the repo in Vercel
+3. Set the root directory to `apps/web`
+4. Add environment variables
+5. Deploy
+
+### Docker
+
+```dockerfile
+FROM node:20-alpine
+WORKDIR /app
+COPY . .
+RUN npm install
+RUN npm run build
+EXPOSE 3000
+CMD ["npm", "start"]
+```
+
+---
+
+## Architecture Notes
+
+- **Central database** — stores projects, users, API keys, and auth data
+- **Per-project databases** — each project connects to its own PostgreSQL instance (BYOD model). Users provide their own database URL when creating a project.
+- **AI providers** — configured per-project. Users bring their own API keys for embedding and LLM providers.
+
+This means your self-hosted MemLib instance is a **control plane** — it manages projects and routes requests, but memory data lives in each user's own database.

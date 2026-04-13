@@ -1,0 +1,94 @@
+---
+title: Memory Diff
+description: "POST /memory/diff — Memory changelog since a timestamp"
+---
+
+## Endpoint
+
+```
+POST /v1/memory/diff
+```
+
+**Permission:** Read
+
+---
+
+## Request Body
+
+```json
+{
+  "namespace": "my-app",
+  "entity": "user-123",
+  "since": "2024-03-20T10:00:00Z",
+  "limit": 200
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `namespace` | `string` | ✅ | — | Memory namespace |
+| `entity` | `string` | ✅ | — | Entity identifier |
+| `since` | `string` | ✅ | — | ISO timestamp — return changes after this time |
+| `limit` | `number` | — | `200` | Max events to return |
+
+---
+
+## Response
+
+```json
+{
+  "created": [
+    {
+      "id": "uuid-1",
+      "content": "Prefers dark mode",
+      "category": "preference",
+      "createdAt": "2024-03-21T09:00:00.000Z"
+    }
+  ],
+  "updated": [
+    {
+      "id": "uuid-2",
+      "content": "Uses Cursor as primary editor",
+      "previousContent": "Uses VS Code",
+      "category": "preference",
+      "updatedAt": "2024-03-21T10:00:00.000Z"
+    }
+  ],
+  "deleted": [],
+  "replaced": [
+    {
+      "oldId": "uuid-3",
+      "oldContent": "Loves vanilla ice cream",
+      "newId": "uuid-4",
+      "newContent": "No longer likes vanilla ice cream",
+      "category": "preference",
+      "reason": "contradiction",
+      "replacedAt": "2024-03-21T11:00:00.000Z"
+    }
+  ],
+  "since": "2024-03-20T10:00:00Z",
+  "changeCount": 3,
+  "summary": "1 new, 1 updated, 1 replaced"
+}
+```
+
+---
+
+## curl Example
+
+```bash
+curl -X POST https://mem.anishroy.com/api/v1/memory/diff \
+  -H "Authorization: Bearer sk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "namespace": "my-app",
+    "entity": "user-123",
+    "since": "2024-03-20T10:00:00Z"
+  }'
+```
+
+---
+
+## LLM Cost
+
+**Zero LLM calls.** Diff is a pure SQL query on the audit trail.

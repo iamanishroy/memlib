@@ -1,0 +1,172 @@
+---
+title: prepare()
+description: Context-aware memory synthesis — generate a briefing for your system prompt
+---
+
+## Signature
+
+```ts
+mem.prepare(options: PrepareOptions): Promise<PrepareResult>
+```
+
+---
+
+## What It Does
+
+`prepare()` is the killer feature for AI agents. Instead of dumping raw memories into your system prompt, it:
+
+1. **Analyzes the conversation** to understand what the user is trying to do
+2. **Generates 2–4 targeted search queries** based on intent
+3. **Runs parallel semantic searches** across those queries
+4. **Deduplicates and ranks** all candidate memories
+5. **Synthesizes a concise briefing** paragraph — only including relevant facts
+
+The output is a ready-to-use context paragraph you can inject directly into your system prompt.
+
+---
+
+## Basic Usage
+
+```ts
+const { context, memoriesUsed, tokenCount } = await mem.prepare({
+  messages: [
+    { role: "user", content: "Can you help me plan dinner tonight?" },
+  ],
+});
+
+console.log(context);
+// "The user is severely allergic to peanuts and loves sushi and Japanese food.
+//  They live in Berlin and prefer dining out on weekdays."
+
+console.log(memoriesUsed);          // ["mem_1", "mem_2", "mem_3"]
+console.log(tokenCount);            // ~42
+```
+
+### Injecting Into Your System Prompt
+
+```ts
+const systemPrompt = `You are a helpful assistant.
+
+About this user:
+${context}`;
+
+// Pass to your LLM of choice
+const response = await openai.chat.completions.create({
+  model: "gpt-4o",
+  messages: [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: "Can you help me plan dinner tonight?" },
+  ],
+});
+```
+
+---
+
+## Options
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `messages` | `Message[]` | ✅ | — | Conversation messages to analyze for context |
+| `namespace` | `string` | — | constructor default | Override namespace |
+| `entity` | `string` | — | constructor default | Override entity |
+| `maxCandidates` | `number` | — | `20` | Max memories to consider before synthesis |
+| `maxTokens` | `number` | — | — | Guide the output token budget |
+| `category` | `string` | — | — | Filter candidates by category |
+
+### Message Format
+
+```ts
+interface Message {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+```
+
+Only the last 6 messages are used for intent analysis — you don't need to worry about trimming.
+
+---
+
+## Return Type
+
+```ts
+interface PrepareResult {
+  /** Synthesized context paragraph, ready to inject into a system prompt */
+  context: string;
+  /** IDs of memories that were used in the synthesis */
+  memoriesUsed: string[];
+  /** Number of candidate memories considered */
+  candidatesConsidered: number;
+  /** Estimated token count of the context */
+  tokenCount: number;
+}
+```
+
+If no relevant memories are found, `context` will be an empty string and `memoriesUsed` will be empty.
+
+---
+
+## Pipeline
+
+```mermaid
+flowchart LR
+    A["Messages"] --> B["Analyze Intent\n(1 LLM call)"]
+    B --> C["Multi-Query\nRecall"]
+    C --> D["Deduplicate\n& Rank"]
+    D --> E["Synthesize\n(1 LLM call)"]
+    E --> F["Context\nParagraph"]
+
+    style A fill:#818cf8,color:#fff
+    style F fill:#34d399,color:#fff
+```
+
+**Always 2 LLM calls** regardless of how many memories exist:
+1. **Intent analysis** — generates targeted search queries from the conversation
+2. **Synthesis** — filters irrelevant memories and produces a concise briefing
+
+---
+
+## Examples
+
+### Multi-turn conversation
+
+```ts
+const ctx = await mem.prepare({
+  messages: [
+    { role: "user", content: "I need to prepare for my meeting tomorrow" },
+    { role: "assistant", content: "Sure! What meeting is it?" },
+    { role: "user", content: "The quarterly review with the product team" },
+  ],
+});
+// context might include: "Works as engineering lead. Reports to VP of Product.
+// Has been working on the search feature for the past quarter."
+```
+
+### Limit candidates for faster responses
+
+```ts
+const ctx = await mem.prepare({
+  messages: [{ role: "user", content: "Quick question about my setup" }],
+  maxCandidates: 10,  // fewer candidates = faster synthesis
+});
+```
+
+### Focus on a specific category
+
+```ts
+const ctx = await mem.prepare({
+  messages: [{ role: "user", content: "What should I eat?" }],
+  category: "health",  // only consider health-related memories
+});
+```
+
+---
+
+## When to Use prepare() vs recall()
+
+| Use Case | Method |
+|----------|--------|
+| You want a ready-to-use context paragraph for a system prompt | `prepare()` |
+| You want raw memory objects to process yourself | `recall()` |
+| You need to display memories in a UI | `recall()` |
+| You want task-specific, filtered context with minimal tokens | `prepare()` |
+| You want zero LLM calls | `recall()` |

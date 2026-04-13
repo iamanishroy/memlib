@@ -1,0 +1,41 @@
+---
+title: Delete Memory
+description: "DELETE /memory/{memoryId} — Delete a memory by ID"
+---
+
+## Endpoint
+
+```
+DELETE /v1/memory/{memoryId}
+```
+
+**Permission:** Admin
+
+---
+
+## Path Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `memoryId` | `string` (UUID) | ✅ | The memory ID to delete |
+
+---
+
+## Response
+
+```json
+{
+  "deleted": true
+}
+```
+
+---
+
+## curl Example
+
+```bash
+curl -X DELETE "https://mem.anishroy.com/api/v1/memory/550e8400-e29b-41d4-a716-446655440000" \
+  -H "Authorization: Bearer sk_your_api_key"
+```
+
+> **Note:** Deletion requires an API key with **Admin** permission (level 3).

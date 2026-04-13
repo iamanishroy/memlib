@@ -1,0 +1,121 @@
+---
+title: recall()
+description: Semantic search — find memories by meaning
+---
+
+## Signature
+
+```ts
+mem.recall(options: RecallOptions): Promise<RetrievedMemory[]>
+```
+
+---
+
+## Basic Usage
+
+Search memories by meaning, not keywords:
+
+```ts
+const memories = await mem.recall({
+  query: "What editor do they use?",
+});
+
+// [
+//   { content: "Uses Cursor as primary editor", similarity: 0.92, score: 0.86, ... },
+//   { content: "Switched from VS Code to Cursor", similarity: 0.85, score: 0.78, ... },
+// ]
+```
+
+Results are ranked by [hybrid score](/docs/concepts/scoring): `0.6 × similarity + 0.2 × recency + 0.2 × importance`.
+
+---
+
+## Options
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `query` | `string` | ✅ | — | Natural language search query |
+| `namespace` | `string` | — | constructor default | Override namespace |
+| `entity` | `string` | — | constructor default | Override entity |
+| `category` | `string` | — | — | Filter by [category](/docs/concepts/categories) |
+| `limit` | `number` | — | `10` | Maximum results |
+| `tags` | `string[]` | — | — | Filter by matching tags |
+| `minImportance` | `number` | — | — | Minimum importance score (0.0–1.0) |
+
+---
+
+## Return Type
+
+```ts
+interface RetrievedMemory {
+  id: string;
+  content: string;
+  category: string | null;
+  tags: string[] | null;
+  metadata: Record<string, unknown> | null;
+  importance: number;
+  /** Cosine similarity to the query (0.0–1.0) */
+  similarity: number;
+  /** Recency score (0.0–1.0, higher = more recent) */
+  recency: number;
+  /** Hybrid score: 0.6×similarity + 0.2×recency + 0.2×importance */
+  score: number;
+}
+```
+
+---
+
+## Examples
+
+### Filter by category
+
+```ts
+const prefs = await mem.recall({
+  query: "development environment",
+  category: "preference",
+  limit: 5,
+});
+```
+
+### Filter by tags
+
+```ts
+const tagged = await mem.recall({
+  query: "dietary requirements",
+  tags: ["health", "food"],
+});
+```
+
+### High-importance only
+
+```ts
+const critical = await mem.recall({
+  query: "allergies and restrictions",
+  minImportance: 0.8,
+});
+```
+
+### Cross-entity query
+
+```ts
+const memories = await mem.recall({
+  query: "sprint planning schedule",
+  namespace: "work",
+  entity: "team-eng",
+});
+```
+
+---
+
+## LLM Cost
+
+**Zero LLM calls.** Recall only uses embedding (to vectorize the query) and pgvector similarity search. This makes it fast and cheap to call frequently.
+
+---
+
+## Tips
+
+- **Be conversational** with your queries. "What does the user like to eat?" works better than "food preference" because the embedding model captures semantic meaning.
+- **Use category filters** when you know the type of information you need — it improves precision.
+- **Set `minImportance`** for safety-critical use cases (e.g., allergies, access control) to ensure only high-confidence facts are returned.
+- **Check `similarity`** on individual results if you need to verify match quality beyond the hybrid score.

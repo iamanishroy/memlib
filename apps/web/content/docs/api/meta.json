@@ -1,0 +1,16 @@
+{
+  "title": "REST API",
+  "pages": [
+    "index",
+    "store",
+    "recall",
+    "prepare",
+    "diff",
+    "list",
+    "batch",
+    "delete",
+    "events",
+    "consolidate",
+    "health"
+  ]
+}
