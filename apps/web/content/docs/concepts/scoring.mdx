@@ -8,7 +8,7 @@ description: How MemLib ranks memories using similarity, recency, and importance
 When you recall memories, MemLib doesn't just return the most similar results. It uses a **hybrid scoring formula** that balances three signals:
 
 ```
-score = 0.6 × similarity + 0.2 × recency + 0.2 × importance
+score = 0.7 × similarity + 0.1 × recency + 0.2 × importance
 ```
 
 This ensures that recent, important memories are surfaced even if they're not the most semantically similar match.
@@ -17,7 +17,7 @@ This ensures that recent, important memories are surfaced even if they're not th
 
 ## Score Components
 
-### Similarity (60% weight)
+### Similarity (70% weight)
 
 **Cosine similarity** between the query embedding and the memory's stored embedding. This is the primary signal — memories must be semantically relevant to the query.
 
@@ -28,7 +28,7 @@ This ensures that recent, important memories are surfaced even if they're not th
 | 0.60–0.75 | Moderate match — tangentially related |
 | < 0.60 | Weak match — likely not relevant |
 
-### Recency (20% weight)
+### Recency (10% weight)
 
 How recently the memory was created or last accessed. Normalized to a 0.0–1.0 scale where:
 
@@ -114,7 +114,7 @@ const memories = await mem.recall({ query: "What editor do they use?" });
 //   similarity: 0.92,     // very strong semantic match
 //   recency: 0.85,        // recently stored
 //   importance: 0.70,     // moderately important
-//   score: 0.862,         // 0.6(0.92) + 0.2(0.85) + 0.2(0.70)
+//   score: 0.869,         // 0.7(0.92) + 0.1(0.85) + 0.2(0.70)
 // }
 ```
 

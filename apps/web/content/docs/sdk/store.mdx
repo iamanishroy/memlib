@@ -36,8 +36,8 @@ console.log(result.conflicts); // 1 — resolved VS Code → Cursor
 
 1. **Extract** — LLM parses your text into atomic facts with importance scores and categories
 2. **Embed** — each fact is converted to a vector embedding
-3. **Deduplicate** — each fact is compared against existing memories (cosine similarity > 0.95 → skip)
-4. **Resolve conflicts** — facts with 0.85–0.95 similarity are resolved via LLM (merge, replace, keep, or contradict)
+3. **Deduplicate** — each fact is compared against existing memories (cosine similarity > 0.98 → skip)
+4. **Resolve conflicts** — facts with 0.65–0.98 similarity are resolved via LLM (merge, replace, keep, or contradict)
 5. **Store** — new and resolved facts are inserted into your database
 
 ---
@@ -53,7 +53,7 @@ const result = await mem.store({
 });
 ```
 
-Raw store still performs basic deduplication (similarity > 0.95 check) but makes **zero LLM calls**.
+Raw store still performs basic deduplication (similarity > 0.98 check) but makes **zero LLM calls**.
 
 ---
 

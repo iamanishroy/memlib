@@ -24,7 +24,7 @@ export interface RecallOptions {
 
 /**
  * Retrieve memories using hybrid scoring:
- *   score = 0.6 * similarity + 0.2 * recency + 0.2 * importance
+ *   score = 0.7 * similarity + 0.1 * recency + 0.2 * importance
  *
  * Scoped to a specific namespace + entity.
  * Supports optional category, tag, and importance filters.

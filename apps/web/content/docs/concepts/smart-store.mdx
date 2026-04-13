@@ -24,9 +24,9 @@ flowchart TD
     B --> C["② Batch Embed\n(parallel API calls)"]
     C --> D["③ Per-Fact Similarity Search\n(pgvector)"]
     D --> E{"Similarity?"}
-    E -->|"> 0.95"| F["⏭️ SKIP\n(exact duplicate)"]
-    E -->|"0.85 – 0.95"| G["④ Conflict Resolution\n(1 LLM call, batched)"]
-    E -->|"< 0.85"| H["✅ INSERT\n(new fact)"]
+    E -->|"> 0.98"| F["⏭️ SKIP\n(exact duplicate)"]
+    E -->|"0.65 – 0.98"| G["④ Conflict Resolution\n(1 LLM call, batched)"]
+    E -->|"< 0.65"| H["✅ INSERT\n(new fact)"]
     G --> I["MERGE"]
     G --> J["REPLACE"]
     G --> K["KEEP"]
@@ -66,9 +66,9 @@ For each fact, MemLib queries your database using pgvector to find existing memo
 
 | Similarity | Action |
 |------------|--------|
-| **> 0.95** | **Skip** — the fact is an exact duplicate |
-| **0.85 – 0.95** | **Conflict zone** — semantically similar but not identical. Needs resolution. |
-| **< 0.85** | **Insert** — new fact, no overlap with existing memories |
+| **> 0.98** | **Skip** — the fact is an exact duplicate |
+| **0.65 – 0.98** | **Conflict zone** — semantically similar but not identical. Needs resolution. |
+| **< 0.65** | **Insert** — new fact, no overlap with existing memories |
 
 ### Stage 4: Conflict Resolution
 

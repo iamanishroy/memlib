@@ -26,7 +26,7 @@ const memories = await mem.recall({
 // ]
 ```
 
-Results are ranked by [hybrid score](/docs/concepts/scoring): `0.6 × similarity + 0.2 × recency + 0.2 × importance`.
+Results are ranked by [hybrid score](/docs/concepts/scoring): `0.7 × similarity + 0.1 × recency + 0.2 × importance`.
 
 ---
 
@@ -58,7 +58,7 @@ interface RetrievedMemory {
   similarity: number;
   /** Recency score (0.0–1.0, higher = more recent) */
   recency: number;
-  /** Hybrid score: 0.6×similarity + 0.2×recency + 0.2×importance */
+  /** Hybrid score: 0.7×similarity + 0.1×recency + 0.2×importance */
   score: number;
 }
 ```

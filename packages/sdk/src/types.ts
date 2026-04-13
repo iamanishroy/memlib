@@ -164,7 +164,7 @@ export interface DiffOptions {
   namespace?: string;
   /** Entity identifier */
   entity?: string;
-  /** Max events to return (default 100) */
+  /** Max events to return (default 200) */
   limit?: number;
 }
 

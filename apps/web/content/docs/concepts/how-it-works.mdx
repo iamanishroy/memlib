@@ -126,24 +126,24 @@ MemLib supports multiple AI providers out of the box:
 
 | Provider | Models |
 |----------|--------|
-| Google Gemini | Gemini 2.0 Flash, Gemini 1.5 Flash, Gemini 1.5 Pro |
-| OpenAI | GPT-4o, GPT-4o Mini, GPT-4 Turbo |
-| Anthropic | Claude 4 Sonnet, Claude 3.5 Haiku |
-| Mistral | Mistral Large, Mistral Small |
-| Groq | LLaMA 3.3 70B, Gemma 2 9B |
-| xAI | Grok 2, Grok 2 Mini |
-| Cohere | Command R+, Command R |
-| OpenRouter | Any model via OpenRouter |
+| Google Gemini | Gemini 2.5 Flash (default), Gemini 2.5 Pro, Gemini 2.0 Flash, Gemini 2.0 Flash Lite, Gemini 1.5 Flash, Gemini 1.5 Pro |
+| OpenAI | GPT-4o Mini (default), GPT-4o, GPT-4 Turbo, GPT-4.1 Mini, GPT-4.1, GPT-4.1 Nano, o3 Mini, o4 Mini |
+| Anthropic | Claude Sonnet 4 (default), Claude 3.5 Haiku, Claude 3.5 Sonnet, Claude 3 Opus |
+| Mistral | Mistral Small (default), Mistral Medium, Mistral Large, Devstral Small, Codestral |
+| Groq | Llama 3.3 70B (default), Llama 3.1 8B, Gemma 2 9B, Mixtral 8x7B, Llama 4 Maverick |
+| xAI | Grok 3 Mini Fast (default), Grok 3 Mini, Grok 3, Grok 3 Fast, Grok 2 |
+| Cohere | Command R (default), Command R+, Command R 7B, Command A |
+| OpenRouter | Any model via OpenRouter (Gemini 2.5 Flash, Claude Sonnet 4, GPT-4o Mini, Llama 3.3 70B, DeepSeek R1, Mistral Large) |
 
 ### Embedding Providers (for vector search)
 
 | Provider | Models |
 |----------|--------|
-| Google Gemini | text-embedding-004 |
-| OpenAI | text-embedding-3-small, text-embedding-3-large |
-| Cohere | embed-english-v3.0, embed-multilingual-v3.0 |
+| Google Gemini | Gemini Embedding 001 (default), text-embedding-004 |
+| OpenAI | text-embedding-3-small (default), text-embedding-3-large, Ada 002 |
+| Cohere | Embed v4.0 (default), embed-english-v3.0, embed-multilingual-v3.0, embed-english-light-v3.0 |
 | Mistral | mistral-embed |
-| Voyage | voyage-3, voyage-3-lite |
+| Voyage | Voyage 3 (default), Voyage 3 Lite, Voyage Code 3 |
 
 See the [Providers guide](/docs/guides/providers) for detailed setup instructions.
 
