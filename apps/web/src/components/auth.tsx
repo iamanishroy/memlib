@@ -1,9 +1,9 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { type JSX, type SVGProps } from "react";
+import { useState, type JSX, type SVGProps } from "react";
+import { Loader2 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 import { authClient } from "@/lib/auth-client";
 
@@ -23,17 +23,15 @@ const GitHubIcon = (
   </svg>
 );
 
-export default function LoginForm() {
-  const handleGoogleSignIn = async () => {
-    await authClient.signIn.social({
-      provider: "google",
-      callbackURL: "/dash",
-    });
-  };
+type SignInProvider = "google" | "github" | null;
 
-  const handleGitHubSignIn = async () => {
+export default function LoginForm() {
+  const [loadingProvider, setLoadingProvider] = useState<SignInProvider>(null);
+
+  const handleSignIn = async (provider: "google" | "github") => {
+    setLoadingProvider(provider);
     await authClient.signIn.social({
-      provider: "github",
+      provider,
       callbackURL: "/dash",
     });
   };
@@ -44,7 +42,9 @@ export default function LoginForm() {
         <div className="sm:mx-auto sm:w-full sm:max-w-sm">
           <div className="flex flex-col items-center gap-2 mb-8">
             <Logo className="h-10 w-10" />
-            <span className="text-xl font-semibold text-foreground">MemLib</span>
+            <span className="text-xl font-semibold text-foreground">
+              MemLib
+            </span>
           </div>
 
           <h2 className="text-balance text-center text-base text-muted-foreground mb-6">
@@ -55,17 +55,27 @@ export default function LoginForm() {
             <Button
               variant="outline"
               className="w-full gap-2 py-2"
-              onClick={handleGoogleSignIn}
+              disabled={loadingProvider !== null}
+              onClick={() => handleSignIn("google")}
             >
-              <GoogleIcon className="size-5" aria-hidden={true} />
+              {loadingProvider === "google" ? (
+                <Loader2 className="size-5 animate-spin" />
+              ) : (
+                <GoogleIcon className="size-5" aria-hidden={true} />
+              )}
               <span className="text-sm font-medium">Sign in with Google</span>
             </Button>
             <Button
               variant="outline"
               className="w-full gap-2 py-2"
-              onClick={handleGitHubSignIn}
+              disabled={loadingProvider !== null}
+              onClick={() => handleSignIn("github")}
             >
-              <GitHubIcon className="size-5" aria-hidden={true} />
+              {loadingProvider === "github" ? (
+                <Loader2 className="size-5 animate-spin" />
+              ) : (
+                <GitHubIcon className="size-5" aria-hidden={true} />
+              )}
               <span className="text-sm font-medium">Sign in with GitHub</span>
             </Button>
           </div>
