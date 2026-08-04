@@ -40,6 +40,11 @@ const { Pool } = pg;
 /** Memory without the embedding vector (internal data) */
 export type SafeMemory = Omit<Memory, "embedding">;
 
+/** Smart store result, with embeddings stripped from the returned memories */
+export type SafeStoreResult = Omit<StoreResult, "memories"> & {
+  memories: (SafeMemory & { event: string })[];
+};
+
 function stripEmbedding<T extends { embedding?: unknown }>(
   obj: T,
 ): Omit<T, "embedding"> {
@@ -68,7 +73,7 @@ export interface MemoryService {
     entity: string,
     content: string,
     options?: StoreSmartOptions,
-  ): Promise<StoreResult>;
+  ): Promise<SafeStoreResult>;
 
   /** Batch store memories (raw, no inference) */
   batchStore(
@@ -172,7 +177,14 @@ export function createMemoryService(config: MemoryConfig): MemoryService {
     },
 
     smartStore: async (namespace, entity, content, options) => {
-      return _storeSmartMemory(deps, namespace, entity, content, options);
+      const result = await _storeSmartMemory(
+        deps,
+        namespace,
+        entity,
+        content,
+        options,
+      );
+      return { ...result, memories: result.memories.map(stripEmbedding) };
     },
 
     batchStore: async (namespace, entity, items) => {

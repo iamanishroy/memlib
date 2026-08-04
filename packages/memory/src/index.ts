@@ -3,6 +3,7 @@ export {
   createMemoryService,
   type MemoryService,
   type SafeMemory,
+  type SafeStoreResult,
 } from "./client";
 
 // Config types
